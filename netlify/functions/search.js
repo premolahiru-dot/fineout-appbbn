@@ -1,3 +1,7 @@
+// Server-Side Cooldown Memory (IP Tracking)
+const IP_COOLDOWN_MS = 3500; // තත්පර 3.5 ක Cooldown කාලය
+const ipRequestHistory = new Map();
+
 exports.handler = async function(event, context) {
     if (event.httpMethod !== "POST") {
         return {
@@ -7,10 +11,10 @@ exports.handler = async function(event, context) {
     }
 
     try {
-        const body = JSON.parse(event.body);
+        const body = JSON.parse(event.body || "{}");
         const action = body.action || "search";
 
-        // 1. Firebase Config Endpoint
+        // 1. Firebase Config Provider
         if (action === "get_config") {
             return {
                 statusCode: 200,
@@ -27,10 +31,42 @@ exports.handler = async function(event, context) {
             };
         }
 
+        // ================= 🛡️ SERVER-SIDE IP COOLDOWN SYSTEM =================
+        const clientIp = event.headers['x-nf-client-connection-ip'] || 
+                         event.headers['client-ip'] || 
+                         event.headers['x-forwarded-for'] || 
+                         'unknown_ip';
+
+        const currentTime = Date.now();
+        const lastRequestTime = ipRequestHistory.get(clientIp);
+
+        if (lastRequestTime && (currentTime - lastRequestTime) < IP_COOLDOWN_MS) {
+            const remainingSeconds = Math.ceil((IP_COOLDOWN_MS - (currentTime - lastRequestTime)) / 1000);
+            return {
+                statusCode: 429,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    error: `⏳ Cooldown Active: Please wait ${remainingSeconds} second(s) before sending another request!` 
+                })
+            };
+        }
+
+        // Update IP Timestamp
+        ipRequestHistory.set(clientIp, currentTime);
+
+        // Memory cleanup (පැරණි records ස්වයංක්‍රීයව මකා දැමීම)
+        if (ipRequestHistory.size > 1000) {
+            for (let [ip, time] of ipRequestHistory) {
+                if (currentTime - time > 60000) ipRequestHistory.delete(ip);
+            }
+        }
+        // =====================================================================
+
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return {
                 statusCode: 500,
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ error: "GEMINI_API_KEY is not configured in Netlify." })
             };
         }
@@ -38,7 +74,7 @@ exports.handler = async function(event, context) {
         // 2. AI Website Builder
         if (action === "generate_site") {
             const promptText = body.prompt;
-            const sitePrompt = `You are FineAI Web Engine. Create a complete, modern, responsive single-page HTML website for: "${promptText}". Return ONLY the pure HTML code inside <!DOCTYPE html><html>...</html>.`;
+            const sitePrompt = `You are FineAI Web Engine. Create a complete, modern, responsive single-page HTML website for: "${promptText}". Return ONLY pure raw HTML code inside <!DOCTYPE html><html>...</html>.`;
 
             const siteUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
             let res = await fetch(siteUrl, {
@@ -72,7 +108,7 @@ exports.handler = async function(event, context) {
             };
         }
 
-        // 3. Search Engine with Spotify Music Intelligence
+        // 3. Search Engine with Spotify Intelligence
         const query = body.query;
         const searchUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
 
@@ -82,8 +118,8 @@ User Query: "${query}".
 Respond ONLY with raw valid JSON in this exact structure:
 {
   "is_insult": false,
-  "is_music": true/false (true if query is about a song, track, artist, album, band, singer, lyrics, or music playlist),
-  "spotify_search": "Exact Song Name and Artist for Spotify (e.g. 'Shape of You Ed Sheeran' or 'Faded Alan Walker')",
+  "is_music": true/false,
+  "spotify_search": "Exact Song Name and Artist for Spotify",
   "wiki_title": "Exact English Wikipedia entity name for this topic",
   "visual_prompt": "Clear 3-5 word descriptive English phrase for a 4K photo",
   "category": "Music/Location/Science/History/Tech/General",
@@ -125,6 +161,7 @@ Respond ONLY with raw valid JSON in this exact structure:
     } catch (error) {
         return {
             statusCode: 500,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ error: error.message })
         };
     }
