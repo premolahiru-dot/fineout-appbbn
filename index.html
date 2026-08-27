@@ -24,6 +24,7 @@
             --spotify-green: #1db954;
             --accent-purple: #c084fc;
             --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.4);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
@@ -54,6 +55,25 @@
         }
         .intro-video-player { width: 100vw; height: 100vh; object-fit: cover; }
 
+        /* Kick / Cheat Lock Screen */
+        .kick-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 5, 12, 0.98); backdrop-filter: blur(35px);
+            z-index: 99999999; display: none; flex-direction: column;
+            justify-content: center; align-items: center; padding: 25px; text-align: center;
+        }
+        .kick-card {
+            background: rgba(26, 12, 18, 0.9); border: 2px solid var(--danger);
+            box-shadow: 0 0 60px var(--danger-glow); border-radius: 28px;
+            padding: 35px 25px; max-width: 460px; width: 100%; display: flex;
+            flex-direction: column; align-items: center; gap: 14px;
+        }
+        .kick-timer-badge {
+            background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger);
+            color: #ff8080; padding: 8px 18px; border-radius: 20px;
+            font-size: 1.2rem; font-weight: 800; letter-spacing: 2px;
+        }
+
         .ambient-glow-1 {
             position: fixed; top: -150px; left: 50%; transform: translateX(-50%);
             width: 700px; height: 400px;
@@ -67,12 +87,20 @@
             margin-bottom: 15px; z-index: 10;
         }
 
-        .auth-btn, .incognito-btn {
+        .top-nav-left, .top-nav-right { display: flex; align-items: center; gap: 8px; }
+
+        .auth-btn, .incognito-btn, .token-pill {
             background: rgba(30, 41, 59, 0.7); border: 1.5px solid var(--surface-border);
             color: var(--text-main); padding: 7px 14px; border-radius: 20px;
             font-size: 0.82rem; font-weight: 600; cursor: pointer;
             display: flex; align-items: center; gap: 6px; backdrop-filter: blur(10px);
         }
+
+        .token-pill {
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #38bdf8; font-weight: 700; cursor: default;
+        }
+        .token-pill.low { border-color: rgba(239, 68, 68, 0.5); color: #f87171; }
 
         .user-profile-badge {
             display: none; align-items: center; gap: 8px;
@@ -116,6 +144,13 @@
             background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff;
             border: none; padding: 10px 22px; border-radius: 22px; font-size: 0.9rem;
             font-weight: 600; cursor: pointer;
+        }
+
+        /* Token Warning Banner */
+        .token-warning-box {
+            width: 100%; background: rgba(30, 41, 59, 0.7); border: 1px solid var(--surface-border);
+            border-radius: 16px; padding: 12px 18px; margin-bottom: 18px; display: none;
+            text-align: center; font-size: 0.85rem; color: #cbd5e1;
         }
 
         /* Web Studio Panel */
@@ -199,6 +234,19 @@
     <video id="incognitoVideo" class="intro-video-player" playsinline><source src="https://files.catbox.moe/bzh1kc.mp4" type="video/mp4"></video>
 </div>
 
+<!-- ================= 🚨 CHEAT DETECTION KICK SCREEN (7 MIN LOCKOUT) ================= -->
+<div class="kick-overlay" id="kickOverlay">
+    <div class="kick-card">
+        <div style="font-size: 3.5rem;">🚨🔒</div>
+        <h2 style="color: #ef4444; font-size: 1.5rem;">CHEAT DETECTED!</h2>
+        <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.5;">
+            You attempted to tamper with system token memory via console/inspect. You have been <strong>KICKED</strong> from the server.
+        </p>
+        <div class="kick-timer-badge" id="kickTimerDisplay">07:00</div>
+        <p style="color: #64748b; font-size: 0.78rem;">Access is locked for 7 minutes. Do not refresh or try again.</p>
+    </div>
+</div>
+
 <!-- Published Site Fullscreen Viewer -->
 <div class="published-site-viewer" id="publishedSiteViewer">
     <button class="viewer-close-bar" onclick="closeSiteViewer()">✕ Back to FineAI</button>
@@ -209,20 +257,22 @@
 
 <!-- Top Nav -->
 <div class="top-navbar">
-    <div>
+    <div class="top-nav-left">
         <button id="googleSignInBtn" class="auth-btn" onclick="signInWithGoogle()"><span>🌐</span> <span>Sign In</span></button>
         <div id="userProfileBadge" class="user-profile-badge">
             <img id="userAvatar" class="user-avatar" src="" alt="User" />
             <span id="userName" class="user-name">User</span>
             <button class="signout-btn" onclick="signOutUser()">✕</button>
         </div>
+        <!-- Token Display Badge -->
+        <div class="token-pill" id="tokenDisplayBadge">⚡ <span id="tokenCount">5</span> Tokens</div>
     </div>
-    <div>
+    <div class="top-nav-right">
         <button class="incognito-btn" id="incognitoToggleBtn" onclick="toggleIncognito()"><span>🕶️</span> <span id="incognitoText">Incognito</span></button>
     </div>
 </div>
 
-<!-- Mode Switch: Search vs Web Studio vs Spotify Music -->
+<!-- Mode Switch -->
 <div class="mode-switch-wrapper">
     <div class="mode-pill active" id="searchModePill" onclick="switchMode('search')">⚡ AI Search</div>
     <div class="mode-pill" id="musicModePill" onclick="switchMode('music')">🎵 Spotify Music</div>
@@ -233,6 +283,11 @@
 <div class="container">
     <div class="brand">
         <img id="brandLogo" src="https://files.catbox.moe/7y76th.png" alt="FineAI Logo" class="brand-logo-img" draggable="false" />
+    </div>
+
+    <!-- 30 Min Token Cooldown Banner -->
+    <div class="token-warning-box" id="tokenCooldownBanner">
+        ⏳ <strong>Tokens Exhausted!</strong> Next refill in: <span id="cooldownTimerText" style="color:#38bdf8; font-weight:700;">30:00</span> minutes.
     </div>
 
     <!-- Search Area -->
@@ -272,7 +327,7 @@
         <div class="shimmer-line"></div>
     </div>
 
-    <!-- Search / Music Results View -->
+    <!-- Search Results View -->
     <div class="results-container" id="resultsContainer">
         <div class="result-card">
             <div class="image-container">
@@ -282,11 +337,9 @@
                 </div>
             </div>
             <div class="result-body">
-                <!-- Spotify Live Embed Player Widget -->
                 <div id="spotifyPlayerContainer" class="spotify-embed-container" style="display: none;">
                     <iframe id="spotifyIframe" class="spotify-iframe" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
                 </div>
-
                 <div class="result-content" id="resultContent"></div>
             </div>
         </div>
@@ -298,8 +351,143 @@
     let rtdb = null, auth = null, currentUser = null;
     let isIncognito = false, currentMode = "search";
 
+    // ================= 🛡️ TOKEN SYSTEM & ANTI-CHEAT KICK ENGINE =================
+    const MAX_TOKENS = 5;
+    const REFILL_DURATION_MS = 30 * 60 * 1000; // 30 Minutes
+    const KICK_DURATION_MS = 7 * 60 * 1000;   // 7 Minutes Lockout
+
+    let actualTokens = parseInt(localStorage.getItem('fine_tokens_sec')) || MAX_TOKENS;
+    let cooldownUntil = parseInt(localStorage.getItem('fine_refill_time')) || 0;
+    let kickUntil = parseInt(localStorage.getItem('fine_kicked_until')) || 0;
+
+    // Check kick state on load
+    function checkKickStatus() {
+        const now = Date.now();
+        if (kickUntil > now) {
+            triggerKickScreen(kickUntil - now);
+            return true;
+        } else if (kickUntil !== 0 && now >= kickUntil) {
+            localStorage.removeItem('fine_kicked_until');
+            kickUntil = 0;
+            document.getElementById('kickOverlay').style.display = 'none';
+        }
+        return false;
+    }
+
+    function triggerCheatKick() {
+        const now = Date.now();
+        kickUntil = now + KICK_DURATION_MS;
+        localStorage.setItem('fine_kicked_until', kickUntil.toString());
+        actualTokens = 0;
+        localStorage.setItem('fine_tokens_sec', "0");
+        triggerKickScreen(KICK_DURATION_MS);
+    }
+
+    function triggerKickScreen(remainingMs) {
+        const overlay = document.getElementById('kickOverlay');
+        const timerDisplay = document.getElementById('kickTimerDisplay');
+        overlay.style.display = 'flex';
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const diff = kickUntil - now;
+            if (diff <= 0) {
+                clearInterval(interval);
+                localStorage.removeItem('fine_kicked_until');
+                kickUntil = 0;
+                overlay.style.display = 'none';
+                actualTokens = MAX_TOKENS;
+                localStorage.setItem('fine_tokens_sec', actualTokens.toString());
+                updateTokenUI();
+            } else {
+                const mins = Math.floor(diff / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
+                timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    }
+
+    // ================= 🪤 CONSOLE HACKER TRAP (HONEYPOT) =================
+    // If a user types `token = 999`, `tokens = 999`, or `setTokens(999)` in inspect element console:
+    let _fakeTokenTrap = 5;
+    Object.defineProperty(window, 'tokens', {
+        get() { return _fakeTokenTrap; },
+        set(val) { triggerCheatKick(); }
+    });
+    Object.defineProperty(window, 'token', {
+        get() { return _fakeTokenTrap; },
+        set(val) { triggerCheatKick(); }
+    });
+    window.setTokens = function() { triggerCheatKick(); };
+    window.addTokens = function() { triggerCheatKick(); };
+    window.giveTokens = function() { triggerCheatKick(); };
+
+    // Anti-Storage Tamper Watcher
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'fine_tokens_sec' && parseInt(e.newValue) > MAX_TOKENS) {
+            triggerCheatKick();
+        }
+    });
+
+    // Update Token UI & 30-Min Cooldown
+    function updateTokenUI() {
+        const now = Date.now();
+        if (cooldownUntil > now) {
+            actualTokens = 0;
+            document.getElementById('tokenCooldownBanner').style.display = 'block';
+            document.getElementById('tokenDisplayBadge').classList.add('low');
+            startCooldownTimer(cooldownUntil - now);
+        } else {
+            if (cooldownUntil !== 0 && now >= cooldownUntil) {
+                actualTokens = MAX_TOKENS;
+                localStorage.setItem('fine_tokens_sec', actualTokens.toString());
+                localStorage.removeItem('fine_refill_time');
+                cooldownUntil = 0;
+            }
+            document.getElementById('tokenCooldownBanner').style.display = 'none';
+            document.getElementById('tokenDisplayBadge').classList.remove('low');
+        }
+        document.getElementById('tokenCount').innerText = actualTokens;
+    }
+
+    function startCooldownTimer(remainingMs) {
+        const timerText = document.getElementById('cooldownTimerText');
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const diff = cooldownUntil - now;
+            if (diff <= 0) {
+                clearInterval(interval);
+                actualTokens = MAX_TOKENS;
+                localStorage.setItem('fine_tokens_sec', actualTokens.toString());
+                localStorage.removeItem('fine_refill_time');
+                cooldownUntil = 0;
+                updateTokenUI();
+            } else {
+                const mins = Math.floor(diff / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
+                timerText.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    }
+
+    function deductToken() {
+        if (actualTokens > 1) {
+            actualTokens--;
+            localStorage.setItem('fine_tokens_sec', actualTokens.toString());
+        } else {
+            actualTokens = 0;
+            localStorage.setItem('fine_tokens_sec', "0");
+            cooldownUntil = Date.now() + REFILL_DURATION_MS;
+            localStorage.setItem('fine_refill_time', cooldownUntil.toString());
+        }
+        updateTokenUI();
+    }
+
     // ================= DYNAMIC FIREBASE INITIALIZATION =================
     async function initFirebaseFromBackend() {
+        if (checkKickStatus()) return;
+        updateTokenUI();
+
         try {
             const res = await fetch(BACKEND_API_URL, {
                 method: "POST",
@@ -362,7 +550,7 @@
             searchArea.style.display = 'block';
             studioPanel.style.display = 'none';
             if (mode === 'music') {
-                qInput.placeholder = "🎵 Search any song, artist, album, or mood playlist on Spotify...";
+                qInput.placeholder = "🎵 Search any song, artist, album, or playlist on Spotify...";
                 sBtn.innerText = "Play 🎧";
             } else {
                 qInput.placeholder = "Ask or search anything in any language...";
@@ -373,6 +561,12 @@
 
     // ================= AI WEB GENERATOR & PUBLISHER =================
     async function generateAndPublishWeb() {
+        if (checkKickStatus()) return;
+        if (actualTokens <= 0) {
+            alert("⚡ Tokens Exhausted! Please wait 30 minutes for a refill.");
+            return;
+        }
+
         const rawSlug = document.getElementById('siteSlugInput').value.trim().toLowerCase();
         const prompt = document.getElementById('sitePromptInput').value.trim();
 
@@ -403,6 +597,8 @@
                     creator: currentUser ? currentUser.email : "Anonymous"
                 });
             }
+
+            deductToken();
 
             const shareLink = `${window.location.origin}/?site=${formattedDomain}`;
             navigator.clipboard.writeText(shareLink);
@@ -476,10 +672,18 @@
 
     // ================= SEARCH & SPOTIFY PLAYER ENGINE =================
     async function handleSearch() {
+        if (checkKickStatus()) return;
+        if (actualTokens <= 0) {
+            alert("⚡ Tokens Exhausted! Please wait 30 minutes for a refill.");
+            return;
+        }
+
         const query = document.getElementById('queryInput').value.trim();
         if (!query) return;
 
+        deductToken();
         saveHistory(query);
+
         document.getElementById('resultsContainer').style.display = 'none';
         document.getElementById('loadingState').style.display = 'block';
 
@@ -495,14 +699,12 @@
             });
             const data = await res.json();
 
-            // Check if Music query -> Load Spotify Embed Player
             if (data.is_music === true || currentMode === 'music' || data.spotify_search) {
                 const searchTrack = encodeURIComponent(data.spotify_search || query);
                 spotifyIframe.src = `https://open.spotify.com/embed/search/${searchTrack}?utm_source=generator&theme=0`;
                 spotifyContainer.style.display = 'block';
             }
 
-            // Image Engine
             let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(data.visual_prompt || query)}?width=900&height=450&nologo=true`;
             try {
                 const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(data.wiki_title || query)}&prop=pageimages&format=json&pithumbsize=1000&origin=*`);
