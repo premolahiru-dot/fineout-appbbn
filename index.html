@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fineout Engine • AI Search & Web Studio</title>
+    <title>Fineout Engine • Powered by FineAI</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,9 +21,9 @@
             --surface-border: rgba(255, 255, 255, 0.08);
             --primary: #38bdf8;
             --primary-glow: rgba(56, 189, 248, 0.25);
+            --spotify-green: #1db954;
             --accent-purple: #c084fc;
             --danger: #ef4444;
-            --danger-glow: rgba(239, 68, 68, 0.35);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
@@ -37,37 +37,21 @@
             --primary-glow: rgba(192, 132, 252, 0.35);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', system-ui, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', system-ui, sans-serif; }
 
         body {
-            background-color: var(--bg-base);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 16px 80px;
-            position: relative;
-            overflow-x: hidden;
+            background-color: var(--bg-base); color: var(--text-main);
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+            padding: 20px 16px 80px; position: relative; overflow-x: hidden;
             transition: background-color 0.4s ease;
         }
 
         /* Fullscreen Video Overlays */
         .intro-splash-overlay, .incognito-video-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #000;
-            z-index: 999999;
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
-            transition: opacity 0.7s ease, visibility 0.7s ease;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 999999; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; transition: opacity 0.7s ease, visibility 0.7s ease;
         }
-
         .intro-video-player { width: 100vw; height: 100vh; object-fit: cover; }
 
         .ambient-glow-1 {
@@ -79,64 +63,48 @@
 
         /* Top Bar */
         .top-navbar {
-            width: 100%; max-width: 860px;
-            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; max-width: 860px; display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 15px; z-index: 10;
         }
 
-        .auth-btn, .incognito-btn, .mode-toggle-btn {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1.5px solid var(--surface-border);
-            color: var(--text-main);
-            padding: 7px 14px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex; align-items: center; gap: 6px;
-            backdrop-filter: blur(10px);
-            transition: all 0.25s ease;
+        .auth-btn, .incognito-btn {
+            background: rgba(30, 41, 59, 0.7); border: 1.5px solid var(--surface-border);
+            color: var(--text-main); padding: 7px 14px; border-radius: 20px;
+            font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; backdrop-filter: blur(10px);
         }
-
-        .auth-btn:hover, .mode-toggle-btn:hover { border-color: #38bdf8; }
 
         .user-profile-badge {
             display: none; align-items: center; gap: 8px;
-            background: rgba(30, 41, 59, 0.8);
-            border: 1.5px solid rgba(56, 189, 248, 0.4);
+            background: rgba(30, 41, 59, 0.8); border: 1.5px solid rgba(56, 189, 248, 0.4);
             padding: 4px 10px 4px 6px; border-radius: 24px;
         }
-
         .user-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8; }
         .user-name { font-size: 0.8rem; font-weight: 600; color: #f8fafc; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .signout-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.8rem; }
         .signout-btn:hover { color: #ef4444; }
 
-        /* Navigation Modes: Search vs Web Studio */
-        .mode-switch-wrapper {
-            display: flex; gap: 8px; margin-bottom: 16px; z-index: 5;
-        }
-
+        /* Navigation Modes */
+        .mode-switch-wrapper { display: flex; gap: 8px; margin-bottom: 16px; z-index: 5; flex-wrap: wrap; justify-content: center; }
         .mode-pill {
-            padding: 8px 18px; border-radius: 20px;
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid var(--surface-border);
-            color: var(--text-muted); font-size: 0.85rem; font-weight: 700;
-            cursor: pointer; transition: all 0.2s;
+            padding: 7px 16px; border-radius: 20px; background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--surface-border); color: var(--text-muted);
+            font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
         }
-
         .mode-pill.active {
-            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(192, 132, 252, 0.2));
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(29, 185, 84, 0.25));
             border-color: var(--primary); color: #fff;
         }
+        .mode-pill.music-active {
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.3), rgba(16, 185, 129, 0.25));
+            border-color: var(--spotify-green); color: #fff;
+        }
 
-        /* Container */
         .container { width: 100%; max-width: 860px; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+        .brand-logo-img { width: 135px; height: 135px; object-fit: contain; margin-bottom: 12px; }
 
-        .brand-logo-img { width: 140px; height: 140px; object-fit: contain; margin-bottom: 12px; }
-
-        /* Search Section */
-        .search-area-wrapper { width: 100%; margin-bottom: 20px; }
+        /* Search Box */
+        .search-area-wrapper { width: 100%; margin-bottom: 18px; }
         .search-box {
             width: 100%; display: flex; align-items: center;
             background: var(--surface-card); backdrop-filter: blur(20px);
@@ -145,9 +113,9 @@
         }
         .search-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 1rem; padding: 10px 0; }
         .search-btn {
-            background: linear-gradient(135deg, #0284c7, #2563eb);
-            color: #fff; border: none; padding: 10px 22px; border-radius: 22px;
-            font-size: 0.9rem; font-weight: 600; cursor: pointer;
+            background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff;
+            border: none; padding: 10px 22px; border-radius: 22px; font-size: 0.9rem;
+            font-weight: 600; cursor: pointer;
         }
 
         /* Web Studio Panel */
@@ -156,33 +124,34 @@
             background: var(--surface-card); border: 1.5px solid rgba(56, 189, 248, 0.3);
             border-radius: 24px; padding: 24px; margin-bottom: 25px;
         }
-
         .studio-header h3 { color: #38bdf8; font-size: 1.25rem; margin-bottom: 4px; }
         .studio-header p { color: #94a3b8; font-size: 0.85rem; }
-
         .domain-input-group {
             display: flex; align-items: center; background: rgba(15, 23, 42, 0.8);
-            border: 1px solid var(--surface-border); border-radius: 16px;
-            padding: 8px 16px; gap: 6px;
+            border: 1px solid var(--surface-border); border-radius: 16px; padding: 8px 16px; gap: 6px;
         }
-        .domain-prefix { color: #38bdf8; font-weight: 700; font-size: 0.9rem; }
-        .domain-slug-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; }
-        .domain-suffix { color: #c084fc; font-weight: 700; font-size: 0.9rem; }
-
+        .domain-prefix { color: #38bdf8; font-weight: 700; }
+        .domain-slug-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; }
+        .domain-suffix { color: #c084fc; font-weight: 700; }
         .studio-prompt-input {
             width: 100%; height: 90px; background: rgba(15, 23, 42, 0.8);
-            border: 1px solid var(--surface-border); border-radius: 16px;
-            padding: 12px; color: #fff; font-size: 0.95rem; outline: none; resize: none;
+            border: 1px solid var(--surface-border); border-radius: 16px; padding: 12px; color: #fff; outline: none; resize: none;
         }
-
-        .studio-btn-row { display: flex; gap: 10px; }
         .btn-generate-web {
-            flex: 1; background: linear-gradient(135deg, #0284c7, #8b5cf6);
-            color: #fff; border: none; padding: 12px; border-radius: 16px;
-            font-weight: 700; cursor: pointer;
+            background: linear-gradient(135deg, #0284c7, #8b5cf6); color: #fff;
+            border: none; padding: 12px; border-radius: 16px; font-weight: 700; cursor: pointer;
         }
 
-        /* Results & Shared View */
+        /* Spotify Player Box */
+        .spotify-embed-container {
+            width: 100%; margin: 15px 0 10px; border-radius: 16px; overflow: hidden;
+            border: 1.5px solid rgba(29, 185, 84, 0.4);
+            box-shadow: 0 10px 30px rgba(29, 185, 84, 0.2);
+            background: #121212;
+        }
+        .spotify-iframe { width: 100%; height: 152px; border: none; border-radius: 14px; }
+
+        /* Results View */
         .results-container { width: 100%; display: none; flex-direction: column; gap: 20px; }
         .result-card {
             background: var(--surface-card); backdrop-filter: blur(25px);
@@ -193,27 +162,21 @@
         .result-image { width: 100%; height: 100%; object-fit: cover; }
         .badge-bar { position: absolute; bottom: 14px; left: 14px; display: flex; gap: 8px; }
         .info-badge { background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; padding: 5px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }
+        .info-badge.spotify-badge { border-color: rgba(29, 185, 84, 0.6); color: #1db954; }
         .result-body { padding: 25px; }
         .result-content { color: #e2e8f0; font-size: 1rem; line-height: 1.8; }
         .result-content strong { color: #fff; }
 
-        /* Fullscreen Published Web Viewer */
-        .published-site-viewer {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 9999999; background: #000; display: none;
-        }
+        /* Fullscreen Web Viewer */
+        .published-site-viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; background: #000; display: none; }
         .viewer-close-bar {
-            position: absolute; top: 12px; right: 16px; z-index: 10;
-            background: rgba(15, 23, 42, 0.9); border: 1px solid var(--surface-border);
-            color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+            position: absolute; top: 12px; right: 16px; z-index: 10; background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--surface-border); color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer;
         }
         .viewer-iframe { width: 100%; height: 100%; border: none; }
 
         /* Shimmer Loading */
-        .loading-shimmer {
-            display: none; width: 100%; background: var(--surface-card);
-            border-radius: 24px; padding: 24px; border: 1px solid var(--surface-border);
-        }
+        .loading-shimmer { display: none; width: 100%; background: var(--surface-card); border-radius: 24px; padding: 24px; border: 1px solid var(--surface-border); }
         .shimmer-box { height: 200px; background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 16px; margin-bottom: 16px; }
         .shimmer-line { height: 14px; background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 8px; margin-bottom: 12px; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -259,9 +222,10 @@
     </div>
 </div>
 
-<!-- Mode Switch: AI Search vs AI Web Studio -->
+<!-- Mode Switch: Search vs Web Studio vs Spotify Music -->
 <div class="mode-switch-wrapper">
     <div class="mode-pill active" id="searchModePill" onclick="switchMode('search')">⚡ AI Search</div>
+    <div class="mode-pill" id="musicModePill" onclick="switchMode('music')">🎵 Spotify Music</div>
     <div class="mode-pill" id="studioModePill" onclick="switchMode('studio')">🌐 Web Studio (Fine.name.out)</div>
 </div>
 
@@ -271,15 +235,15 @@
         <img id="brandLogo" src="https://files.catbox.moe/7y76th.png" alt="FineAI Logo" class="brand-logo-img" draggable="false" />
     </div>
 
-    <!-- Mode 1: Search Area -->
+    <!-- Search Area -->
     <div class="search-area-wrapper" id="searchArea">
         <div class="search-box">
             <input type="text" id="queryInput" class="search-input" placeholder="Ask or search anything in any language..." onkeydown="if(event.key === 'Enter') handleSearch()" />
-            <button class="search-btn" onclick="handleSearch()">Search ➔</button>
+            <button class="search-btn" id="mainSearchBtn" onclick="handleSearch()">Search ➔</button>
         </div>
     </div>
 
-    <!-- Mode 2: AI Web Studio Panel -->
+    <!-- Web Studio Panel -->
     <div class="web-studio-panel" id="webStudioPanel">
         <div class="studio-header">
             <h3>🌐 AI Web Studio & Share Link</h3>
@@ -290,10 +254,8 @@
             <input type="text" id="siteSlugInput" class="domain-slug-input" placeholder="yourname" />
             <span class="domain-suffix">.out</span>
         </div>
-        <textarea id="sitePromptInput" class="studio-prompt-input" placeholder="Describe the website you want (e.g., 'Modern Portfolio for a Photographer with gallery and contact section')..."></textarea>
-        <div class="studio-btn-row">
-            <button class="btn-generate-web" onclick="generateAndPublishWeb()">🚀 Create & Publish Website</button>
-        </div>
+        <textarea id="sitePromptInput" class="studio-prompt-input" placeholder="Describe the website you want (e.g., 'Modern Portfolio for a Musician with Spotify player & gallery')..."></textarea>
+        <button class="btn-generate-web" onclick="generateAndPublishWeb()">🚀 Create & Publish Website</button>
     </div>
 
     <!-- History -->
@@ -310,7 +272,7 @@
         <div class="shimmer-line"></div>
     </div>
 
-    <!-- Search Results View -->
+    <!-- Search / Music Results View -->
     <div class="results-container" id="resultsContainer">
         <div class="result-card">
             <div class="image-container">
@@ -320,6 +282,11 @@
                 </div>
             </div>
             <div class="result-body">
+                <!-- Spotify Live Embed Player Widget -->
+                <div id="spotifyPlayerContainer" class="spotify-embed-container" style="display: none;">
+                    <iframe id="spotifyIframe" class="spotify-iframe" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                </div>
+
                 <div class="result-content" id="resultContent"></div>
             </div>
         </div>
@@ -331,7 +298,7 @@
     let rtdb = null, auth = null, currentUser = null;
     let isIncognito = false, currentMode = "search";
 
-    // ================= DYNAMIC FIREBASE INITIALIZATION FROM BACKEND =================
+    // ================= DYNAMIC FIREBASE INITIALIZATION =================
     async function initFirebaseFromBackend() {
         try {
             const res = await fetch(BACKEND_API_URL, {
@@ -360,10 +327,9 @@
                 loadHistory();
             });
 
-            // Check if URL has ?site=fine.name.out to open published website
             checkSharedSiteUrl();
         } catch (e) {
-            console.error("Firebase config load error:", e);
+            console.error("Firebase load error:", e);
         }
     }
 
@@ -380,16 +346,28 @@
     // ================= MODE SWITCHING =================
     function switchMode(mode) {
         currentMode = mode;
-        if (mode === 'search') {
-            document.getElementById('searchModePill').classList.add('active');
-            document.getElementById('studioModePill').classList.remove('active');
-            document.getElementById('searchArea').style.display = 'block';
-            document.getElementById('webStudioPanel').style.display = 'none';
+        const searchArea = document.getElementById('searchArea');
+        const studioPanel = document.getElementById('webStudioPanel');
+        const qInput = document.getElementById('queryInput');
+        const sBtn = document.getElementById('mainSearchBtn');
+
+        document.getElementById('searchModePill').className = 'mode-pill' + (mode === 'search' ? ' active' : '');
+        document.getElementById('musicModePill').className = 'mode-pill' + (mode === 'music' ? ' music-active' : '');
+        document.getElementById('studioModePill').className = 'mode-pill' + (mode === 'studio' ? ' active' : '');
+
+        if (mode === 'studio') {
+            searchArea.style.display = 'none';
+            studioPanel.style.display = 'flex';
         } else {
-            document.getElementById('studioModePill').classList.add('active');
-            document.getElementById('searchModePill').classList.remove('active');
-            document.getElementById('searchArea').style.display = 'none';
-            document.getElementById('webStudioPanel').style.display = 'flex';
+            searchArea.style.display = 'block';
+            studioPanel.style.display = 'none';
+            if (mode === 'music') {
+                qInput.placeholder = "🎵 Search any song, artist, album, or mood playlist on Spotify...";
+                sBtn.innerText = "Play 🎧";
+            } else {
+                qInput.placeholder = "Ask or search anything in any language...";
+                sBtn.innerText = "Search ➔";
+            }
         }
     }
 
@@ -399,16 +377,14 @@
         const prompt = document.getElementById('sitePromptInput').value.trim();
 
         if (!rawSlug || !prompt) {
-            alert("Please enter a custom slug (e.g. 'lahiru') and describe the website!");
+            alert("Please enter a custom slug and describe the website!");
             return;
         }
 
         const formattedDomain = `fine.${rawSlug.replace(/[^a-z0-9]/g, '')}.out`;
-
         document.getElementById('loadingState').style.display = 'block';
 
         try {
-            // 1. Ask Netlify AI backend to generate complete website HTML
             const res = await fetch(BACKEND_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -418,7 +394,6 @@
             const data = await res.json();
             if (!data.html) throw new Error("Could not generate HTML");
 
-            // 2. Save generated website to Firebase Realtime Database
             if (rtdb) {
                 const siteRef = rtdb.ref(`published_sites/${formattedDomain.replace(/\./g, '_')}`);
                 await siteRef.set({
@@ -429,13 +404,9 @@
                 });
             }
 
-            // 3. Generate Share Link
             const shareLink = `${window.location.origin}/?site=${formattedDomain}`;
-            
             navigator.clipboard.writeText(shareLink);
-            alert(`🎉 Website Created & Published Successfully!\n\n🌐 Custom Domain: ${formattedDomain}\n🔗 Share Link: ${shareLink}\n(Link copied to clipboard!)`);
-
-            // Preview instantly
+            alert(`🎉 Website Published!\n\n🌐 Slug: ${formattedDomain}\n🔗 Link: ${shareLink}\n(Copied to clipboard!)`);
             openSiteViewerWithHtml(data.html);
 
         } catch (e) {
@@ -445,7 +416,6 @@
         }
     }
 
-    // ================= SHARED SITE URL VIEWER =================
     function checkSharedSiteUrl() {
         const urlParams = new URLSearchParams(window.location.search);
         const siteDomain = urlParams.get('site');
@@ -472,16 +442,14 @@
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // ================= VIDEO & START LOGIC =================
+    // ================= VIDEO & START =================
     const introVideo = document.getElementById('introVideo');
     introVideo.addEventListener('ended', dismissIntro);
     introVideo.addEventListener('error', () => setTimeout(dismissIntro, 500));
 
     function dismissIntro() {
         document.getElementById('introSplashOverlay').style.opacity = '0';
-        setTimeout(() => {
-            document.getElementById('introSplashOverlay').style.display = 'none';
-        }, 700);
+        setTimeout(() => { document.getElementById('introSplashOverlay').style.display = 'none'; }, 700);
     }
 
     function toggleIncognito() {
@@ -506,7 +474,7 @@
         }
     }
 
-    // ================= SEARCH ENGINE =================
+    // ================= SEARCH & SPOTIFY PLAYER ENGINE =================
     async function handleSearch() {
         const query = document.getElementById('queryInput').value.trim();
         if (!query) return;
@@ -514,6 +482,10 @@
         saveHistory(query);
         document.getElementById('resultsContainer').style.display = 'none';
         document.getElementById('loadingState').style.display = 'block';
+
+        const spotifyContainer = document.getElementById('spotifyPlayerContainer');
+        const spotifyIframe = document.getElementById('spotifyIframe');
+        spotifyContainer.style.display = 'none';
 
         try {
             const res = await fetch(BACKEND_API_URL, {
@@ -523,7 +495,14 @@
             });
             const data = await res.json();
 
-            // Fetch accurate image
+            // Check if Music query -> Load Spotify Embed Player
+            if (data.is_music === true || currentMode === 'music' || data.spotify_search) {
+                const searchTrack = encodeURIComponent(data.spotify_search || query);
+                spotifyIframe.src = `https://open.spotify.com/embed/search/${searchTrack}?utm_source=generator&theme=0`;
+                spotifyContainer.style.display = 'block';
+            }
+
+            // Image Engine
             let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(data.visual_prompt || query)}?width=900&height=450&nologo=true`;
             try {
                 const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(data.wiki_title || query)}&prop=pageimages&format=json&pithumbsize=1000&origin=*`);
@@ -536,7 +515,16 @@
             } catch (err) {}
 
             document.getElementById('resultImage').src = imgUrl;
-            document.getElementById('badgeTag').innerText = data.badge_text || "⚡ FineAI Verified";
+            
+            const badge = document.getElementById('badgeTag');
+            if (data.is_music) {
+                badge.className = 'info-badge spotify-badge';
+                badge.innerText = '🎵 Spotify Music Stream';
+            } else {
+                badge.className = 'info-badge';
+                badge.innerText = data.badge_text || "⚡ FineAI Verified";
+            }
+
             document.getElementById('resultContent').innerHTML = formatMarkdown(data.answer);
             document.getElementById('resultsContainer').style.display = 'flex';
         } catch (e) {
