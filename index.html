@@ -9,6 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --bg-base: #060913;
@@ -100,20 +105,93 @@
             background: radial-gradient(circle, rgba(192, 132, 252, 0.18) 0%, transparent 70%);
         }
 
+        /* Top Bar */
         .top-navbar {
             width: 100%;
             max-width: 860px;
             display: flex;
-            justify-content: flex-end;
-            margin-bottom: 10px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
             z-index: 10;
+        }
+
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Auth UI */
+        .auth-btn {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1.5px solid var(--surface-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.25s ease;
+        }
+
+        .auth-btn:hover {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .user-profile-badge {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1.5px solid rgba(56, 189, 248, 0.4);
+            padding: 4px 12px 4px 6px;
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1.5px solid #38bdf8;
+        }
+
+        .user-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #f8fafc;
+            max-width: 110px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .signout-icon-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-left: 4px;
+            transition: color 0.2s;
+        }
+
+        .signout-icon-btn:hover {
+            color: #ef4444;
         }
 
         .incognito-btn {
             background: rgba(30, 41, 59, 0.6);
             border: 1.5px solid var(--surface-border);
             color: var(--text-muted);
-            padding: 8px 18px;
+            padding: 8px 16px;
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
@@ -581,9 +659,24 @@
 
 <!-- ================= TOP NAV ================= -->
 <div class="top-navbar">
-    <button class="incognito-btn" id="incognitoToggleBtn" onclick="toggleIncognito()">
-        <span id="incognitoIcon">🕶️</span> <span id="incognitoText">Incognito Mode</span>
-    </button>
+    <!-- User Profile / Google Sign-In -->
+    <div class="top-nav-left">
+        <button id="googleSignInBtn" class="auth-btn" onclick="signInWithGoogle()">
+            <span>🌐</span> <span>Sign In</span>
+        </button>
+        <div id="userProfileBadge" class="user-profile-badge">
+            <img id="userAvatar" class="user-avatar" src="" alt="User" />
+            <span id="userName" class="user-name">User</span>
+            <button class="signout-icon-btn" onclick="signOutUser()" title="Sign Out">✕</button>
+        </div>
+    </div>
+
+    <!-- Incognito Mode -->
+    <div class="top-nav-right">
+        <button class="incognito-btn" id="incognitoToggleBtn" onclick="toggleIncognito()">
+            <span id="incognitoIcon">🕶️</span> <span id="incognitoText">Incognito</span>
+        </button>
+    </div>
 </div>
 
 <!-- ================= MAIN CONTAINER ================= -->
@@ -615,7 +708,7 @@
 
     <div class="history-wrapper" id="historyWrapper">
         <div class="history-header">
-            <span>🕒 Recent Searches</span>
+            <span id="historyHeaderTitle">🕒 Recent Searches</span>
             <button class="clear-btn" onclick="clearHistory()">Clear History</button>
         </div>
         <div class="history-chips" id="historyChips"></div>
@@ -657,9 +750,63 @@
 </div>
 
 <script>
-    // Netlify Serverless Function Endpoint
-    const BACKEND_API_URL = "/.netlify/functions/search";
+    // ================= FIREBASE INITIALIZATION =================
+    const firebaseConfig = {
+        apiKey: "AIzaSyCz1K3qek2p7N_VmDDeLn4eowkQ6VeBi8o",
+        authDomain: "new-2c44f.firebaseapp.com",
+        databaseURL: "https://new-2c44f-default-rtdb.firebaseio.com",
+        projectId: "new-2c44f",
+        storageBucket: "new-2c44f.firebasestorage.app",
+        messagingSenderId: "198112294220",
+        appId: "1:198112294220:web:d9aee5bd5c9d4f4a5e0be9",
+        measurementId: "G-KCJ0J255SM"
+    };
 
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const rtdb = firebase.database();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+    let currentUser = null;
+
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const userProfileBadge = document.getElementById('userProfileBadge');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const historyHeaderTitle = document.getElementById('historyHeaderTitle');
+
+    // Auth State Changed Listener
+    auth.onAuthStateChanged(user => {
+        currentUser = user;
+        if (user) {
+            googleSignInBtn.style.display = 'none';
+            userProfileBadge.style.display = 'flex';
+            userAvatar.src = user.photoURL || "https://files.catbox.moe/7y76th.png";
+            userName.innerText = user.displayName ? user.displayName.split(" ")[0] : "User";
+            historyHeaderTitle.innerText = "☁️ Cloud Synced Searches";
+        } else {
+            googleSignInBtn.style.display = 'flex';
+            userProfileBadge.style.display = 'none';
+            historyHeaderTitle.innerText = "🕒 Recent Searches";
+        }
+        loadHistory();
+    });
+
+    function signInWithGoogle() {
+        auth.signInWithPopup(googleProvider).catch(error => {
+            console.error("Sign-in Error:", error);
+            alert("Google Sign-In Error: " + error.message);
+        });
+    }
+
+    function signOutUser() {
+        auth.signOut().then(() => {
+            loadHistory();
+        });
+    }
+
+    // ================= GENERAL CONFIG & DOM =================
+    const BACKEND_API_URL = "/.netlify/functions/search";
     const INSULT_GIF = "https://files.catbox.moe/t72mfp.gif";
     const NORMAL_LOGO = "https://files.catbox.moe/7y76th.png";
     const INCOGNITO_LOGO = "https://files.catbox.moe/hi9lwi.jpg";
@@ -731,7 +878,7 @@
         } else {
             document.body.classList.remove('incognito-mode');
             brandLogo.src = NORMAL_LOGO;
-            incognitoText.innerText = "Incognito Mode";
+            incognitoText.innerText = "Incognito";
             queryInput.placeholder = "Ask or search anything in any language...";
         }
     }
@@ -811,7 +958,6 @@
         };
     }
 
-    // Main Search Logic using Netlify Backend
     async function handleSearch() {
         const query = queryInput.value.trim();
         if (!query) return;
@@ -842,7 +988,6 @@
         resultBody.style.display = 'block';
 
         try {
-            // Netlify backend serverless function එකට Request එක යැවීම
             const response = await fetch(BACKEND_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -907,21 +1052,56 @@
             .replace(/\n/g, '<br>');
     }
 
+    // ================= FIREBASE CLOUD / LOCAL HISTORY =================
     function saveHistory(query) {
-        let history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [];
-        history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
-        history.unshift(query);
-        if (history.length > 6) history.pop();
-        localStorage.setItem('fineout_history_v10', JSON.stringify(history));
-        loadHistory();
+        if (isIncognito) return;
+
+        if (currentUser) {
+            // Firebase Realtime DB එකට Save කිරීම
+            const userHistoryRef = rtdb.ref(`users/${currentUser.uid}/history`);
+            userHistoryRef.push({
+                query: query,
+                timestamp: Date.now()
+            });
+        } else {
+            // LocalStorage එකට Save කිරීම
+            let history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [];
+            history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
+            history.unshift(query);
+            if (history.length > 6) history.pop();
+            localStorage.setItem('fineout_history_v10', JSON.stringify(history));
+            renderHistoryChips(history);
+        }
     }
 
     function loadHistory() {
-        const history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [
-            "Sigiriya Location", "Colombo City", "Quantum Computing"
-        ];
+        if (currentUser) {
+            const userHistoryRef = rtdb.ref(`users/${currentUser.uid}/history`).limitToLast(8);
+            userHistoryRef.on('value', snapshot => {
+                const data = snapshot.val();
+                let queries = [];
+                if (data) {
+                    const items = Object.values(data);
+                    queries = items.map(item => (typeof item === 'object' ? item.query : item)).reverse();
+                    queries = [...new Set(queries)].slice(0, 6);
+                }
+                renderHistoryChips(queries);
+            });
+        } else {
+            const history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [
+                "Sigiriya Location", "Colombo City", "Quantum Computing"
+            ];
+            renderHistoryChips(history);
+        }
+    }
+
+    function renderHistoryChips(items) {
         historyChips.innerHTML = "";
-        history.forEach(item => {
+        if (!items || items.length === 0) {
+            historyChips.innerHTML = `<span style="color: var(--text-dim); font-size: 0.8rem;">No searches yet</span>`;
+            return;
+        }
+        items.forEach(item => {
             const chip = document.createElement('div');
             chip.className = 'chip';
             chip.innerText = `🔍 ${item}`;
@@ -934,8 +1114,12 @@
     }
 
     function clearHistory() {
-        localStorage.removeItem('fineout_history_v10');
-        loadHistory();
+        if (currentUser) {
+            rtdb.ref(`users/${currentUser.uid}/history`).remove();
+        } else {
+            localStorage.removeItem('fineout_history_v10');
+        }
+        renderHistoryChips([]);
     }
 </script>
 
