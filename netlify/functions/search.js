@@ -1,5 +1,4 @@
 exports.handler = async function(event, context) {
-    // Only allow POST requests
     if (event.httpMethod !== "POST") {
         return {
             statusCode: 405,
@@ -16,7 +15,6 @@ exports.handler = async function(event, context) {
             };
         }
 
-        // Netlify Environment Variable එකෙන් API Key එක ලබාගැනීම
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return {
@@ -25,7 +23,8 @@ exports.handler = async function(event, context) {
             };
         }
 
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+        // නවතම Gemini 3.6 Flash Model එක
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
 
         const systemPrompt = `You are FineAI, the next-generation ultra-intelligent search engine.
 User Query: "${query}".
@@ -41,7 +40,7 @@ Respond ONLY with raw valid JSON in this exact structure:
   "answer": "Structured Markdown output with ## Main Title, concise summary, key points with bullet points, and important details formatted neatly."
 }`;
 
-        const response = await fetch(API_URL, {
+        let response = await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -50,12 +49,25 @@ Respond ONLY with raw valid JSON in this exact structure:
             })
         });
 
+        // 3.6-flash busy නම් 3.5-flash එකට මාරු වීම (Fallback)
+        if (!response.ok) {
+            const fallbackURL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${API_KEY}`;
+            response = await fetch(fallbackURL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+                    generationConfig: { temperature: 0.25, maxOutputTokens: 1200 }
+                })
+            });
+        }
+
         const data = await response.json();
 
         if (!response.ok) {
             return {
                 statusCode: response.status,
-                body: JSON.stringify({ error: data.error?.message || "API Error" })
+                body: JSON.stringify({ error: data.error?.message || "AI Model Error" })
             };
         }
 
