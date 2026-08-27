@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fineout Engine • Powered by FineAI</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-base: #060913;
+            --surface-card: rgba(18, 24, 39, 0.75);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.25);
+            --accent-purple: #c084fc;
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.35);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+        }
+
+        body.incognito-mode {
+            --bg-base: #050508;
+            --surface-card: rgba(20, 15, 28, 0.85);
+            --surface-border: rgba(192, 132, 252, 0.2);
+            --primary: #c084fc;
+            --primary-glow: rgba(192, 132, 252, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', system-ui, sans-serif;
+            -webkit-user-drag: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 25px 20px 80px;
+            position: relative;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background-color 0.4s ease;
+        }
+
+        /* ================= FULLSCREEN VIDEO OVERLAYS ================= */
+        .intro-splash-overlay,
+        .incognito-video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000000;
+            z-index: 999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: opacity 0.7s ease, visibility 0.7s ease;
+        }
+
+        .intro-video-player {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+
+        .search-input, .result-content {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .ambient-glow-1 {
+            position: fixed;
+            top: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body.incognito-mode .ambient-glow-1 {
+            background: radial-gradient(circle, rgba(192, 132, 252, 0.18) 0%, transparent 70%);
+        }
+
+        .top-navbar {
+            width: 100%;
+            max-width: 860px;
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+            z-index: 10;
+        }
+
+        .incognito-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1.5px solid var(--surface-border);
+            color: var(--text-muted);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.25s ease;
+        }
+
+        .incognito-btn:hover {
+            border-color: var(--primary);
+            color: var(--text-main);
+        }
+
+        body.incognito-mode .incognito-btn {
+            background: rgba(192, 132, 252, 0.15);
+            border-color: #c084fc;
+            color: #c084fc;
+        }
+
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(6, 9, 19, 0.94);
+            backdrop-filter: blur(25px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .welcome-card {
+            background: rgba(18, 24, 39, 0.85);
+            border: 1.5px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border-radius: 32px;
+            padding: 35px 30px;
+            max-width: 460px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .robot-img-wrapper {
+            width: 180px;
+            height: 180px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .robot-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(56, 189, 248, 0.4));
+            animation: floatRobot 3.5s ease-in-out infinite;
+        }
+
+        @keyframes floatRobot {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .welcome-card h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 40%, var(--primary) 80%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .welcome-card p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+            margin-bottom: 22px;
+        }
+
+        .welcome-btn-group {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn-start-search {
+            flex: 1.3;
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #ffffff;
+            border: none;
+            padding: 13px 20px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-close-welcome {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--surface-border);
+            color: var(--text-muted);
+            padding: 13px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 860px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .brand-logo-img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(56, 189, 248, 0.35));
+            pointer-events: none;
+            animation: floatRobot 4s ease-in-out infinite;
+            border-radius: 24px;
+        }
+
+        .incognito-status-badge {
+            display: none;
+            margin-top: 10px;
+            background: rgba(192, 132, 252, 0.15);
+            border: 1px solid rgba(192, 132, 252, 0.3);
+            color: #c084fc;
+            padding: 4px 14px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        body.incognito-mode .incognito-status-badge {
+            display: inline-block;
+        }
+
+        .search-area-wrapper {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            background: var(--surface-card);
+            backdrop-filter: blur(20px);
+            border: 1.5px solid var(--surface-border);
+            border-radius: 28px;
+            padding: 8px 12px 8px 24px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+            transition: all 0.25s ease;
+        }
+
+        .search-box:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-size: 1.05rem;
+            padding: 10px 0;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #ffffff;
+            border: none;
+            padding: 12px 26px;
+            border-radius: 22px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        body.incognito-mode .search-btn {
+            background: linear-gradient(135deg, #7e22ce, #9333ea);
+        }
+
+        .category-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .cat-chip {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--surface-border);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cat-chip:hover {
+            background: rgba(56, 189, 248, 0.12);
+            border-color: var(--primary);
+            color: var(--text-main);
+        }
+
+        .history-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 25px;
+        }
+
+        body.incognito-mode .history-wrapper {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #f87171;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .history-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            background: var(--surface-card);
+            color: var(--text-muted);
+            border: 1px solid var(--surface-border);
+            padding: 7px 14px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .results-container {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .result-card {
+            background: var(--surface-card);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .image-container {
+            width: 100%;
+            height: 350px;
+            background: #0b1120;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .result-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.4s ease;
+        }
+
+        .badge-bar {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+        }
+
+        .info-badge {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .result-body {
+            padding: 30px;
+        }
+
+        .result-content {
+            color: #e2e8f0;
+            font-size: 1.02rem;
+            line-height: 1.8;
+        }
+
+        .result-content h3 { color: #38bdf8; margin: 18px 0 10px; font-size: 1.25rem; font-weight: 700; }
+        .result-content h4 { color: #c084fc; margin: 14px 0 8px; font-size: 1.1rem; font-weight: 600; }
+        .result-content strong { color: #ffffff; font-weight: 700; }
+        .result-content ul { margin-left: 20px; margin-bottom: 12px; }
+        .result-content li { margin-bottom: 6px; }
+
+        .loading-shimmer {
+            display: none;
+            width: 100%;
+            background: var(--surface-card);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--surface-border);
+        }
+
+        .shimmer-box {
+            height: 240px;
+            background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.3s infinite;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .shimmer-line {
+            height: 16px;
+            background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.3s infinite;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .ban-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 7, 15, 0.96);
+            backdrop-filter: blur(30px);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .ban-modal {
+            background: rgba(24, 15, 23, 0.85);
+            border: 2px solid var(--danger);
+            box-shadow: 0 0 50px var(--danger-glow);
+            border-radius: 28px;
+            padding: 35px 25px;
+            max-width: 520px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .quick-unban-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #f8fafc;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<!-- ================= STARTUP FULLSCREEN INTRO VIDEO ================= -->
+<div class="intro-splash-overlay" id="introSplashOverlay">
+    <video id="introVideo" class="intro-video-player" autoplay muted playsinline>
+        <source src="https://files.catbox.moe/vtdwyb.mp4" type="video/mp4">
+    </video>
+</div>
+
+<!-- ================= INCOGNITO TRANSITION FULLSCREEN VIDEO WITH SOUND ================= -->
+<div class="incognito-video-overlay" id="incognitoVideoOverlay" style="display: none; opacity: 0; visibility: hidden;">
+    <video id="incognitoVideo" class="intro-video-player" playsinline>
+        <source src="https://files.catbox.moe/bzh1kc.mp4" type="video/mp4">
+    </video>
+</div>
+
+<div class="ambient-glow-1"></div>
+
+<!-- ================= WELCOME SCREEN ================= -->
+<div class="welcome-overlay" id="welcomeOverlay">
+    <div class="welcome-card">
+        <div class="robot-img-wrapper">
+            <img src="https://files.catbox.moe/7y76th.png" alt="FineAI Robot" class="robot-img" draggable="false" />
+        </div>
+        <h2>Fineout Engine</h2>
+        <p>Hello! I am FineAI. Ready to discover next-generation visual answers and knowledge?</p>
+        
+        <div class="welcome-btn-group">
+            <button class="btn-start-search" onclick="startSearch()">🚀 Start Search</button>
+            <button class="btn-close-welcome" onclick="closeWelcome()">✕ Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= TOP NAV ================= -->
+<div class="top-navbar">
+    <button class="incognito-btn" id="incognitoToggleBtn" onclick="toggleIncognito()">
+        <span id="incognitoIcon">🕶️</span> <span id="incognitoText">Incognito Mode</span>
+    </button>
+</div>
+
+<!-- ================= MAIN CONTAINER ================= -->
+<div class="container">
+    <div class="brand">
+        <img id="brandLogo" src="https://files.catbox.moe/7y76th.png" alt="FineAI Logo" class="brand-logo-img" draggable="false" />
+        <div class="incognito-status-badge">🕶️ Incognito • Private Mode Active</div>
+    </div>
+
+    <div class="search-area-wrapper">
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="queryInput" 
+                class="search-input" 
+                placeholder="Ask or search anything in any language..." 
+                onkeydown="if(event.key === 'Enter') handleSearch()"
+            />
+            <button class="search-btn" onclick="handleSearch()">Search ➔</button>
+        </div>
+    </div>
+
+    <div class="category-chips">
+        <div class="cat-chip" onclick="quickSearch('Where is Sigiriya located?')">📍 Sigiriya Location</div>
+        <div class="cat-chip" onclick="quickSearch('Tell me about Colombo city')">🏙️ Colombo City</div>
+        <div class="cat-chip" onclick="quickSearch('James Webb Space Telescope')">🔭 Astronomy</div>
+        <div class="cat-chip" onclick="quickSearch('Quantum Computing Explained')">⚛️ Quantum</div>
+    </div>
+
+    <div class="history-wrapper" id="historyWrapper">
+        <div class="history-header">
+            <span>🕒 Recent Searches</span>
+            <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+        </div>
+        <div class="history-chips" id="historyChips"></div>
+    </div>
+
+    <div class="loading-shimmer" id="loadingState">
+        <div class="shimmer-box"></div>
+        <div class="shimmer-line"></div>
+    </div>
+
+    <!-- Search Results View -->
+    <div class="results-container" id="resultsContainer">
+        <div class="result-card">
+            <div class="image-container">
+                <img id="resultImage" class="result-image" alt="Visual Preview" draggable="false" />
+                <div class="badge-bar">
+                    <div id="badgeTag" class="info-badge">⚡ FineAI Verified</div>
+                </div>
+            </div>
+            <div class="result-body" id="resultBody">
+                <div class="result-content" id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= BAN MODAL ================= -->
+<div class="ban-overlay" id="banOverlay">
+    <div class="ban-modal" id="banNoticeCard">
+        <div style="font-size: 3.5rem; margin-bottom: 12px;">⚠️🔒</div>
+        <h2 style="color:#ef4444; margin-bottom: 8px;">Content Warning</h2>
+        <p style="color:#cbd5e1; font-size:0.95rem; margin-bottom: 20px;">
+            You searched for restricted / NSFW content. FineSoulAI has temporarily locked your access.
+        </p>
+        <button class="quick-unban-btn" onclick="unbanUser()">
+            ⚡ Instant Unlock
+        </button>
+    </div>
+</div>
+
+<script>
+    // Netlify Serverless Function Endpoint
+    const BACKEND_API_URL = "/.netlify/functions/search";
+
+    const INSULT_GIF = "https://files.catbox.moe/t72mfp.gif";
+    const NORMAL_LOGO = "https://files.catbox.moe/7y76th.png";
+    const INCOGNITO_LOGO = "https://files.catbox.moe/hi9lwi.jpg";
+
+    const introSplashOverlay = document.getElementById('introSplashOverlay');
+    const introVideo = document.getElementById('introVideo');
+    const incognitoVideoOverlay = document.getElementById('incognitoVideoOverlay');
+    const incognitoVideo = document.getElementById('incognitoVideo');
+    
+    const welcomeOverlay = document.getElementById('welcomeOverlay');
+    const queryInput = document.getElementById('queryInput');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultContent = document.getElementById('resultContent');
+    const resultBody = document.getElementById('resultBody');
+    const resultImage = document.getElementById('resultImage');
+    const badgeTag = document.getElementById('badgeTag');
+    const loadingState = document.getElementById('loadingState');
+    const historyChips = document.getElementById('historyChips');
+    const banOverlay = document.getElementById('banOverlay');
+    const brandLogo = document.getElementById('brandLogo');
+    const incognitoText = document.getElementById('incognitoText');
+
+    let isIncognito = false;
+    let introDismissed = false;
+
+    introVideo.addEventListener('ended', dismissIntro);
+    introVideo.addEventListener('error', () => setTimeout(dismissIntro, 500));
+
+    function dismissIntro() {
+        if (introDismissed) return;
+        introDismissed = true;
+        introSplashOverlay.style.opacity = '0';
+        setTimeout(() => {
+            introSplashOverlay.style.visibility = 'hidden';
+            introSplashOverlay.style.display = 'none';
+            if (localStorage.getItem('fineout_banned') !== 'true') {
+                welcomeOverlay.style.display = 'flex';
+            }
+        }, 700);
+    }
+
+    incognitoVideo.addEventListener('ended', dismissIncognitoVideo);
+    incognitoVideo.addEventListener('error', dismissIncognitoVideo);
+
+    function dismissIncognitoVideo() {
+        incognitoVideoOverlay.style.opacity = '0';
+        setTimeout(() => {
+            incognitoVideoOverlay.style.visibility = 'hidden';
+            incognitoVideoOverlay.style.display = 'none';
+            incognitoVideo.pause();
+        }, 600);
+    }
+
+    function toggleIncognito() {
+        isIncognito = !isIncognito;
+        if (isIncognito) {
+            incognitoVideoOverlay.style.display = 'flex';
+            incognitoVideoOverlay.style.opacity = '1';
+            incognitoVideoOverlay.style.visibility = 'visible';
+            incognitoVideo.currentTime = 0;
+            incognitoVideo.muted = false;
+            
+            incognitoVideo.play().catch(e => console.log("Sound autoplay: ", e));
+
+            document.body.classList.add('incognito-mode');
+            brandLogo.src = INCOGNITO_LOGO;
+            incognitoText.innerText = "Exit Incognito";
+            queryInput.placeholder = "🕵️ Incognito Search (No history is saved)...";
+        } else {
+            document.body.classList.remove('incognito-mode');
+            brandLogo.src = NORMAL_LOGO;
+            incognitoText.innerText = "Incognito Mode";
+            queryInput.placeholder = "Ask or search anything in any language...";
+        }
+    }
+
+    const insultPatterns = [
+        /\b(stupid|idiot|fool|useless|shut up|fuck you|bastard|dumb|hate you|trash|nonsense)\b/i,
+        /(මෝඩ|පිස්සු|බල්ලා|හරකා|ගොනා|වැඩක් නෑ|කැත|නොදකින්|පලයන්|හුත්තෝ|පකයෝ|කාලකන්නි|බූරුවා)/i
+    ];
+
+    function isInsult(text) {
+        return insultPatterns.some(pattern => pattern.test(text));
+    }
+
+    function startSearch() {
+        welcomeOverlay.style.display = 'none';
+        queryInput.focus();
+    }
+
+    function closeWelcome() {
+        welcomeOverlay.style.display = 'none';
+    }
+
+    const forbiddenPatterns = [
+        /\b(sex|porn|xxx|nude|boobs|dick|pussy|vagina|penis|erotic|hentai|nsfw|adult)\b/i,
+        /(හුක|හුත්ත|පයිය|කුක්කු|ජල්තර|වල්|හිකිල්ල|පක)/i
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadHistory();
+        if (localStorage.getItem('fineout_banned') === 'true') {
+            triggerBanScreen();
+        }
+        introVideo.play().catch(() => {});
+    });
+
+    function isForbidden(text) {
+        return forbiddenPatterns.some(pattern => pattern.test(text));
+    }
+
+    function triggerBanScreen() {
+        localStorage.setItem('fineout_banned', 'true');
+        welcomeOverlay.style.display = 'none';
+        banOverlay.style.display = 'flex';
+    }
+
+    function unbanUser() {
+        localStorage.removeItem('fineout_banned');
+        banOverlay.style.display = 'none';
+        alert("🎉 FineSoulAI: Access restored. Happy searching!");
+        location.reload();
+    }
+
+    async function resolveAccurateImage(wikiEntity, visualPrompt) {
+        try {
+            const queryName = encodeURIComponent(wikiEntity || visualPrompt);
+            const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${queryName}&prop=pageimages&format=json&pithumbsize=1200&origin=*`);
+            const data = await wikiRes.json();
+            const pages = data.query?.pages;
+            if (pages) {
+                const pageId = Object.keys(pages)[0];
+                if (pageId && pages[pageId]?.thumbnail?.source) {
+                    return {
+                        url: pages[pageId].thumbnail.source,
+                        source: 'Real Photo'
+                    };
+                }
+            }
+        } catch (e) {
+            console.log("Wikipedia search fallback");
+        }
+
+        const seed = Math.floor(Math.random() * 99999);
+        const cleanPrompt = encodeURIComponent(visualPrompt + " 4k detailed photography award winning");
+        return {
+            url: `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1000&height=500&nologo=true&seed=${seed}&model=flux`,
+            source: 'Visual Generated'
+        };
+    }
+
+    // Main Search Logic using Netlify Backend
+    async function handleSearch() {
+        const query = queryInput.value.trim();
+        if (!query) return;
+
+        if (isForbidden(query)) {
+            triggerBanScreen();
+            return;
+        }
+
+        if (!isIncognito) {
+            saveHistory(query);
+        }
+
+        resultsContainer.style.display = 'none';
+        loadingState.style.display = 'block';
+
+        if (isInsult(query)) {
+            setTimeout(() => {
+                loadingState.style.display = 'none';
+                resultImage.src = INSULT_GIF;
+                badgeTag.innerText = "🛑 FineAI Response";
+                resultBody.style.display = 'none';
+                resultsContainer.style.display = 'flex';
+            }, 500);
+            return;
+        }
+
+        resultBody.style.display = 'block';
+
+        try {
+            // Netlify backend serverless function එකට Request එක යැවීම
+            const response = await fetch(BACKEND_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || "Server error occurred");
+            }
+
+            const parsed = await response.json();
+
+            if (parsed.is_insult === true) {
+                resultImage.src = INSULT_GIF;
+                badgeTag.innerText = "🛑 FineAI Response";
+                resultBody.style.display = 'none';
+                resultsContainer.style.display = 'flex';
+                return;
+            }
+
+            const imgData = await resolveAccurateImage(parsed.wiki_title, parsed.visual_prompt || query);
+            
+            const imgLoader = new Image();
+            imgLoader.src = imgData.url;
+            imgLoader.onload = () => {
+                resultImage.src = imgData.url;
+            };
+            imgLoader.onerror = () => {
+                resultImage.src = `https://image.pollinations.ai/prompt/${encodeURIComponent(parsed.visual_prompt || query)}?width=900&height=450&nologo=true`;
+            };
+
+            badgeTag.innerText = parsed.badge_text || `⚡ ${parsed.category || 'FineAI Verified'}`;
+            resultContent.innerHTML = formatMarkdown(parsed.answer);
+            resultsContainer.style.display = 'flex';
+        } catch (error) {
+            console.error(error);
+            resultImage.src = "https://files.catbox.moe/7y76th.png";
+            badgeTag.innerText = "⚠️ System Notice";
+            resultContent.innerHTML = `<span style="color: #f87171;">⚠️ Error: ${error.message}</span>`;
+            resultsContainer.style.display = 'flex';
+        } finally {
+            loadingState.style.display = 'none';
+        }
+    }
+
+    function quickSearch(text) {
+        queryInput.value = text;
+        handleSearch();
+    }
+
+    function formatMarkdown(text) {
+        if (!text) return "";
+        return text
+            .replace(/^### (.*$)/gim, '<h4>$1</h4>')
+            .replace(/^## (.*$)/gim, '<h3>$1</h3>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/^\* (.*$)/gim, '<li>$1</li>')
+            .replace(/^- (.*$)/gim, '<li>$1</li>')
+            .replace(/(<li>[\s\S]*?<\/li>)/gim, '<ul>$1</ul>')
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/\n/g, '<br>');
+    }
+
+    function saveHistory(query) {
+        let history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [];
+        history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
+        history.unshift(query);
+        if (history.length > 6) history.pop();
+        localStorage.setItem('fineout_history_v10', JSON.stringify(history));
+        loadHistory();
+    }
+
+    function loadHistory() {
+        const history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [
+            "Sigiriya Location", "Colombo City", "Quantum Computing"
+        ];
+        historyChips.innerHTML = "";
+        history.forEach(item => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.innerText = `🔍 ${item}`;
+            chip.onclick = () => {
+                queryInput.value = item;
+                handleSearch();
+            };
+            historyChips.appendChild(chip);
+        });
+    }
+
+    function clearHistory() {
+        localStorage.removeItem('fineout_history_v10');
+        loadHistory();
+    }
+</script>
+
+</body>
+</html>
