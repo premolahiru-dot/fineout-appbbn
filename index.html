@@ -116,6 +116,12 @@
             z-index: 10;
         }
 
+        .top-nav-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .top-nav-right {
             display: flex;
             align-items: center;
@@ -127,14 +133,14 @@
             background: rgba(30, 41, 59, 0.7);
             border: 1.5px solid var(--surface-border);
             color: var(--text-main);
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             backdrop-filter: blur(10px);
             transition: all 0.25s ease;
         }
@@ -212,6 +218,100 @@
             background: rgba(192, 132, 252, 0.15);
             border-color: #c084fc;
             color: #c084fc;
+        }
+
+        /* Modal for Phone Login & Choices */
+        .auth-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(6, 9, 19, 0.92);
+            backdrop-filter: blur(20px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            padding: 20px;
+        }
+
+        .auth-modal {
+            background: rgba(18, 24, 39, 0.95);
+            border: 1.5px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border-radius: 28px;
+            padding: 30px 25px;
+            max-width: 400px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+            position: relative;
+        }
+
+        .auth-modal h3 {
+            color: #fff;
+            font-size: 1.3rem;
+        }
+
+        .auth-modal p {
+            color: #94a3b8;
+            font-size: 0.88rem;
+        }
+
+        .phone-input-box {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--surface-border);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+        }
+
+        .phone-input-box:focus {
+            border-color: var(--primary);
+        }
+
+        .modal-action-btn {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .modal-google-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--surface-border);
+            color: #fff;
+            padding: 12px;
+            border-radius: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.2rem;
+            cursor: pointer;
         }
 
         .welcome-overlay {
@@ -625,6 +725,9 @@
 </head>
 <body oncontextmenu="return false;">
 
+<!-- Invisible Recaptcha Container for Phone Auth -->
+<div id="recaptcha-container"></div>
+
 <!-- ================= STARTUP FULLSCREEN INTRO VIDEO ================= -->
 <div class="intro-splash-overlay" id="introSplashOverlay">
     <video id="introVideo" class="intro-video-player" autoplay muted playsinline>
@@ -640,6 +743,39 @@
 </div>
 
 <div class="ambient-glow-1"></div>
+
+<!-- ================= AUTH MODAL (PHONE / GOOGLE LOGIN) ================= -->
+<div class="auth-modal-overlay" id="authModalOverlay">
+    <div class="auth-modal">
+        <button class="modal-close-btn" onclick="closeAuthModal()">✕</button>
+        <h3>Sign In to FineAI</h3>
+        <p>Save search history to cloud across devices</p>
+
+        <!-- Google Login Option -->
+        <button class="modal-google-btn" onclick="signInWithGoogle()">
+            <span>🌐</span> Sign in with Google
+        </button>
+
+        <div style="display:flex; align-items:center; gap:8px; margin: 4px 0;">
+            <div style="flex:1; height:1px; background:rgba(255,255,255,0.1);"></div>
+            <span style="color:#64748b; font-size:0.8rem;">OR PHONE</span>
+            <div style="flex:1; height:1px; background:rgba(255,255,255,0.1);"></div>
+        </div>
+
+        <!-- Phone Number Input Step -->
+        <div id="phoneStep1" style="display:flex; flex-direction:column; gap:12px;">
+            <input type="tel" id="phoneNumberInput" class="phone-input-box" placeholder="+94 77 123 4567" />
+            <button class="modal-action-btn" onclick="sendPhoneOtp()">📲 Send OTP Code</button>
+        </div>
+
+        <!-- OTP Verify Step -->
+        <div id="phoneStep2" style="display:none; flex-direction:column; gap:12px;">
+            <p style="color:#38bdf8; font-size:0.85rem;">Enter 6-digit verification code sent to your phone:</p>
+            <input type="number" id="otpCodeInput" class="phone-input-box" placeholder="123456" />
+            <button class="modal-action-btn" onclick="verifyPhoneOtp()">✅ Verify & Sign In</button>
+        </div>
+    </div>
+</div>
 
 <!-- ================= WELCOME SCREEN ================= -->
 <div class="welcome-overlay" id="welcomeOverlay">
@@ -659,10 +795,10 @@
 
 <!-- ================= TOP NAV ================= -->
 <div class="top-navbar">
-    <!-- User Profile / Google Sign-In -->
+    <!-- User Profile / Auth Button -->
     <div class="top-nav-left">
-        <button id="googleSignInBtn" class="auth-btn" onclick="signInWithGoogle()">
-            <span>🌐</span> <span>Sign In</span>
+        <button id="authTriggerBtn" class="auth-btn" onclick="openAuthModal()">
+            <span>🔑</span> <span>Sign In</span>
         </button>
         <div id="userProfileBadge" class="user-profile-badge">
             <img id="userAvatar" class="user-avatar" src="" alt="User" />
@@ -768,35 +904,102 @@
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
     let currentUser = null;
+    let confirmationResult = null;
 
-    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const authTriggerBtn = document.getElementById('authTriggerBtn');
     const userProfileBadge = document.getElementById('userProfileBadge');
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
     const historyHeaderTitle = document.getElementById('historyHeaderTitle');
+    const authModalOverlay = document.getElementById('authModalOverlay');
+    const phoneStep1 = document.getElementById('phoneStep1');
+    const phoneStep2 = document.getElementById('phoneStep2');
+    const phoneNumberInput = document.getElementById('phoneNumberInput');
+    const otpCodeInput = document.getElementById('otpCodeInput');
 
-    // Auth State Changed Listener
+    // Setup invisible Recaptcha for Phone Auth
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+        size: 'invisible'
+    });
+
+    // Auth State Listener
     auth.onAuthStateChanged(user => {
         currentUser = user;
         if (user) {
-            googleSignInBtn.style.display = 'none';
+            authTriggerBtn.style.display = 'none';
             userProfileBadge.style.display = 'flex';
             userAvatar.src = user.photoURL || "https://files.catbox.moe/7y76th.png";
-            userName.innerText = user.displayName ? user.displayName.split(" ")[0] : "User";
+            userName.innerText = user.displayName ? user.displayName.split(" ")[0] : (user.phoneNumber || "User");
             historyHeaderTitle.innerText = "☁️ Cloud Synced Searches";
+            closeAuthModal();
         } else {
-            googleSignInBtn.style.display = 'flex';
+            authTriggerBtn.style.display = 'flex';
             userProfileBadge.style.display = 'none';
             historyHeaderTitle.innerText = "🕒 Recent Searches";
         }
         loadHistory();
     });
 
+    function openAuthModal() {
+        authModalOverlay.style.display = 'flex';
+        phoneStep1.style.display = 'flex';
+        phoneStep2.style.display = 'none';
+    }
+
+    function closeAuthModal() {
+        authModalOverlay.style.display = 'none';
+    }
+
+    // Google Sign-In
     function signInWithGoogle() {
         auth.signInWithPopup(googleProvider).catch(error => {
             console.error("Sign-in Error:", error);
             alert("Google Sign-In Error: " + error.message);
         });
+    }
+
+    // Phone Sign-In (Send OTP)
+    function sendPhoneOtp() {
+        let phoneNum = phoneNumberInput.value.trim();
+        if (!phoneNum) {
+            alert("Please enter a valid phone number with country code (e.g. +94771234567)");
+            return;
+        }
+
+        if (!phoneNum.startsWith("+")) {
+            phoneNum = "+94" + phoneNum.replace(/^0/, ''); // Auto format for Sri Lanka if 077...
+        }
+
+        const appVerifier = window.recaptchaVerifier;
+        auth.signInWithPhoneNumber(phoneNum, appVerifier)
+            .then(result => {
+                confirmationResult = result;
+                phoneStep1.style.display = 'none';
+                phoneStep2.style.display = 'flex';
+                alert("📩 Verification code sent via SMS!");
+            })
+            .catch(error => {
+                console.error("Phone Auth Error:", error);
+                alert("Phone Error: " + error.message);
+            });
+    }
+
+    // Verify OTP
+    function verifyPhoneOtp() {
+        const otp = otpCodeInput.value.trim();
+        if (!otp || !confirmationResult) {
+            alert("Please enter the 6-digit code.");
+            return;
+        }
+
+        confirmationResult.confirm(otp)
+            .then(result => {
+                alert("🎉 Successfully Signed In!");
+                closeAuthModal();
+            })
+            .catch(error => {
+                alert("Invalid verification code: " + error.message);
+            });
     }
 
     function signOutUser() {
@@ -805,7 +1008,7 @@
         });
     }
 
-    // ================= GENERAL CONFIG & DOM =================
+    // ================= GENERAL APP LOGIC =================
     const BACKEND_API_URL = "/.netlify/functions/search";
     const INSULT_GIF = "https://files.catbox.moe/t72mfp.gif";
     const NORMAL_LOGO = "https://files.catbox.moe/7y76th.png";
@@ -1057,14 +1260,12 @@
         if (isIncognito) return;
 
         if (currentUser) {
-            // Firebase Realtime DB එකට Save කිරීම
             const userHistoryRef = rtdb.ref(`users/${currentUser.uid}/history`);
             userHistoryRef.push({
                 query: query,
                 timestamp: Date.now()
             });
         } else {
-            // LocalStorage එකට Save කිරීම
             let history = JSON.parse(localStorage.getItem('fineout_history_v10')) || [];
             history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
             history.unshift(query);
