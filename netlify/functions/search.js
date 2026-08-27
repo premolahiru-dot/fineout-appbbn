@@ -8,9 +8,9 @@ exports.handler = async function(event, context) {
 
     try {
         const body = JSON.parse(event.body);
-        const action = body.action || "search"; // "search" | "get_config" | "generate_site"
+        const action = body.action || "search";
 
-        // 1. Firebase Config එක Frontend එකට ආරක්ෂිතව ලබාදීම
+        // 1. Firebase Config Endpoint
         if (action === "get_config") {
             return {
                 statusCode: 200,
@@ -35,13 +35,10 @@ exports.handler = async function(event, context) {
             };
         }
 
-        // 2. AI Website Builder Logic
+        // 2. AI Website Builder
         if (action === "generate_site") {
             const promptText = body.prompt;
-            const sitePrompt = `You are FineAI Web Engine, a world-class frontend web developer.
-Create a complete, modern, ultra-stylish, responsive single-page HTML website for this request: "${promptText}".
-Include modern CSS (dark/glassmorphism design, responsive, cool fonts via CDN, animations, nice buttons).
-Return ONLY the pure raw HTML code inside <!DOCTYPE html><html>...</html>. Do NOT include markdown backticks or explanations.`;
+            const sitePrompt = `You are FineAI Web Engine. Create a complete, modern, responsive single-page HTML website for: "${promptText}". Return ONLY the pure HTML code inside <!DOCTYPE html><html>...</html>.`;
 
             const siteUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
             let res = await fetch(siteUrl, {
@@ -75,22 +72,23 @@ Return ONLY the pure raw HTML code inside <!DOCTYPE html><html>...</html>. Do NO
             };
         }
 
-        // 3. Main Search Logic
+        // 3. Search Engine with Spotify Music Intelligence
         const query = body.query;
         const searchUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
 
-        const systemPrompt = `You are FineAI, the next-generation ultra-intelligent search engine.
+        const systemPrompt = `You are FineAI, the next-generation search engine with built-in Spotify Music Intelligence.
 User Query: "${query}".
-Answer accurately, intelligently, and clearly in the SAME LANGUAGE as user (Sinhala if Sinhala, English if English).
 
 Respond ONLY with raw valid JSON in this exact structure:
 {
   "is_insult": false,
-  "wiki_title": "Exact English Wikipedia entity name for this topic (e.g. 'Sigiriya', 'Colombo', 'James Webb Space Telescope', 'Albert Einstein')",
-  "visual_prompt": "Clear 3-5 word descriptive English phrase for a photograph",
-  "category": "Location/Science/History/Tech/General",
-  "badge_text": "Short Badge Title (e.g. '📍 Sigiriya, Sri Lanka' or '🔭 Space Technology')",
-  "answer": "Structured Markdown output with ## Main Title, concise summary, key points with bullet points, and important details formatted neatly."
+  "is_music": true/false (true if query is about a song, track, artist, album, band, singer, lyrics, or music playlist),
+  "spotify_search": "Exact Song Name and Artist for Spotify (e.g. 'Shape of You Ed Sheeran' or 'Faded Alan Walker')",
+  "wiki_title": "Exact English Wikipedia entity name for this topic",
+  "visual_prompt": "Clear 3-5 word descriptive English phrase for a 4K photo",
+  "category": "Music/Location/Science/History/Tech/General",
+  "badge_text": "Short Badge Title (e.g. '🎵 Spotify Music' or '📍 Location')",
+  "answer": "Structured Markdown output in user's language with summary, track/topic details, facts, or lyrics neatly formatted."
 }`;
 
         let response = await fetch(searchUrl, {
