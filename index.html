@@ -3,57 +3,954 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fineout Engine • Live Preview</title>
+    <title>Fineout Engine • Powered by FineAI</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100vw; height: 100vh; background: #060913; overflow: hidden; font-family: system-ui, sans-serif; }
-        
-        /* Minimalist Preview Shell */
-        #previewLoader {
-            position: fixed; inset: 0; background: #060913; z-index: 100;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px;
-            color: #38bdf8; font-weight: 600; letter-spacing: 1px; transition: opacity 0.5s ease;
+        :root {
+            --bg-base: #060913;
+            --surface-card: rgba(18, 24, 39, 0.75);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.25);
+            --spotify-green: #1db954;
+            --accent-purple: #c084fc;
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
         }
-        .spinner {
-            width: 45px; height: 45px; border: 3px solid rgba(56, 189, 248, 0.15);
-            border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite;
+
+        body.incognito-mode {
+            --bg-base: #050508;
+            --surface-card: rgba(20, 15, 28, 0.85);
+            --surface-border: rgba(192, 132, 252, 0.2);
+            --primary: #c084fc;
+            --primary-glow: rgba(192, 132, 252, 0.35);
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', system-ui, sans-serif;
+            -webkit-user-drag: none;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px 80px;
+            position: relative;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease;
+        }
+
+        /* Ambient Background Glow */
+        .ambient-glow-1 {
+            position: fixed;
+            top: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body.incognito-mode .ambient-glow-1 {
+            background: radial-gradient(circle, rgba(192, 132, 252, 0.18) 0%, transparent 70%);
+        }
+
+        /* Fullscreen Video Overlays */
+        .intro-splash-overlay, .incognito-video-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 999999; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; transition: opacity 0.7s ease, visibility 0.7s ease;
+        }
+        .intro-video-player { width: 100vw; height: 100vh; object-fit: cover; }
+
+        /* Floating Robot Animation */
+        @keyframes floatRobot {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(1deg); }
+        }
+
+        /* Shimmer Loading Animation */
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes pulseMic {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            50% { transform: scale(1.1); box-shadow: 0 0 15px 5px rgba(239, 68, 68, 0.6); }
+        }
+
+        /* Welcome Splash Screen */
+        .welcome-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(6, 9, 19, 0.94); backdrop-filter: blur(25px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 10000; padding: 20px; animation: fadeIn 0.3s ease;
+        }
+
+        .welcome-card {
+            background: rgba(18, 24, 39, 0.85); border: 1.5px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); border-radius: 32px;
+            padding: 35px 30px; max-width: 460px; width: 100%;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+        }
+
+        .robot-img-wrapper {
+            width: 180px; height: 180px; margin-bottom: 16px; display: flex;
+            justify-content: center; align-items: center; pointer-events: none;
+        }
+
+        .robot-img {
+            width: 100%; height: 100%; object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(56, 189, 248, 0.4));
+            animation: floatRobot 3.5s ease-in-out infinite;
+        }
+
+        .welcome-card h2 {
+            font-size: 1.8rem; font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 40%, var(--primary) 80%, var(--accent-purple) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;
+        }
+
+        .welcome-card p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 22px; }
+
+        .welcome-btn-group { display: flex; gap: 12px; width: 100%; }
+        .btn-start-search {
+            flex: 1.3; background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #ffffff; border: none; padding: 13px 20px; border-radius: 20px;
+            font-size: 0.95rem; font-weight: 700; cursor: pointer;
+        }
+        .btn-close-welcome {
+            flex: 1; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--surface-border);
+            color: var(--text-muted); padding: 13px 20px; border-radius: 20px; font-size: 0.9rem; cursor: pointer;
+        }
+
+        /* Top Bar */
+        .top-navbar {
+            width: 100%; max-width: 860px; display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; z-index: 10;
+        }
+
+        .auth-btn, .incognito-btn {
+            background: rgba(30, 41, 59, 0.7); border: 1.5px solid var(--surface-border);
+            color: var(--text-main); padding: 8px 16px; border-radius: 20px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+            transition: all 0.25s ease;
+        }
+
+        .auth-btn:hover { border-color: #38bdf8; background: rgba(56, 189, 248, 0.15); }
+        .incognito-btn:hover { border-color: var(--primary); color: var(--text-main); }
+        body.incognito-mode .incognito-btn { background: rgba(192, 132, 252, 0.15); border-color: #c084fc; color: #c084fc; }
+
+        .user-profile-badge {
+            display: none; align-items: center; gap: 8px;
+            background: rgba(30, 41, 59, 0.8); border: 1.5px solid rgba(56, 189, 248, 0.4);
+            padding: 4px 12px 4px 6px; border-radius: 24px;
+        }
+        .user-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid #38bdf8; }
+        .user-name { font-size: 0.82rem; font-weight: 600; color: #f8fafc; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .signout-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.85rem; }
+        .signout-btn:hover { color: #ef4444; }
+
+        /* Navigation Modes Switcher */
+        .mode-switch-wrapper { display: flex; gap: 8px; margin-bottom: 16px; z-index: 5; flex-wrap: wrap; justify-content: center; }
+        .mode-pill {
+            padding: 7px 16px; border-radius: 20px; background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--surface-border); color: var(--text-muted);
+            font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-pill.active {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(192, 132, 252, 0.25));
+            border-color: var(--primary); color: #fff;
+        }
+        .mode-pill.music-active {
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.3), rgba(16, 185, 129, 0.25));
+            border-color: var(--spotify-green); color: #fff;
+        }
+
+        /* Container & Brand */
+        .container { width: 100%; max-width: 860px; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+        .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 18px; }
+        .brand-logo-img {
+            width: 140px; height: 140px; object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(56, 189, 248, 0.35));
+            pointer-events: none; animation: floatRobot 4s ease-in-out infinite; border-radius: 24px;
+        }
+
+        .incognito-status-badge {
+            display: none; margin-top: 10px; background: rgba(192, 132, 252, 0.15);
+            border: 1px solid rgba(192, 132, 252, 0.3); color: #c084fc; padding: 4px 14px;
+            border-radius: 15px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        }
+        body.incognito-mode .incognito-status-badge { display: inline-block; }
+
+        /* Search Box with Mic Voice Input */
+        .search-area-wrapper { width: 100%; margin-bottom: 18px; }
+        .search-box {
+            width: 100%; display: flex; align-items: center;
+            background: var(--surface-card); backdrop-filter: blur(20px);
+            border: 1.5px solid var(--surface-border); border-radius: 28px;
+            padding: 6px 10px 6px 20px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+            transition: all 0.25s ease;
+        }
+        .search-box:focus-within {
+            border-color: var(--primary); box-shadow: 0 0 30px var(--primary-glow); transform: translateY(-2px);
+        }
+        .search-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 1.02rem; padding: 10px 0; }
         
-        #appContainer { width: 100%; height: 100%; border: none; }
+        .mic-btn {
+            background: none; border: none; color: var(--text-muted); font-size: 1.15rem;
+            cursor: pointer; padding: 6px 12px; transition: all 0.2s ease; border-radius: 50%;
+        }
+        .mic-btn:hover { color: var(--primary); }
+        .mic-btn.listening { color: #ef4444; animation: pulseMic 1.2s infinite; }
+
+        .search-btn {
+            background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff;
+            border: none; padding: 11px 24px; border-radius: 22px; font-size: 0.92rem;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        body.incognito-mode .search-btn { background: linear-gradient(135deg, #7e22ce, #9333ea); }
+
+        /* Category Chips */
+        .category-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 22px; }
+        .cat-chip {
+            background: rgba(30, 41, 59, 0.5); border: 1px solid var(--surface-border);
+            color: var(--text-muted); padding: 6px 14px; border-radius: 16px; font-size: 0.82rem;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .cat-chip:hover { background: rgba(56, 189, 248, 0.12); border-color: var(--primary); color: #fff; }
+
+        /* Web Studio Panel */
+        .web-studio-panel {
+            width: 100%; display: none; flex-direction: column; gap: 14px;
+            background: var(--surface-card); border: 1.5px solid rgba(56, 189, 248, 0.3);
+            border-radius: 24px; padding: 24px; margin-bottom: 25px;
+        }
+        .studio-header h3 { color: #38bdf8; font-size: 1.25rem; margin-bottom: 4px; }
+        .studio-header p { color: #94a3b8; font-size: 0.85rem; }
+        .domain-input-group {
+            display: flex; align-items: center; background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--surface-border); border-radius: 16px; padding: 8px 16px; gap: 6px;
+        }
+        .domain-prefix { color: #38bdf8; font-weight: 700; }
+        .domain-slug-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; }
+        .domain-suffix { color: #c084fc; font-weight: 700; }
+        .studio-prompt-input {
+            width: 100%; height: 90px; background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--surface-border); border-radius: 16px; padding: 12px; color: #fff; outline: none; resize: none;
+        }
+        .btn-generate-web {
+            background: linear-gradient(135deg, #0284c7, #8b5cf6); color: #fff;
+            border: none; padding: 12px; border-radius: 16px; font-weight: 700; cursor: pointer;
+        }
+
+        /* Spotify Player Box */
+        .spotify-embed-container {
+            width: 100%; margin: 15px 0 10px; border-radius: 16px; overflow: hidden;
+            border: 1.5px solid rgba(29, 185, 84, 0.4);
+            box-shadow: 0 10px 30px rgba(29, 185, 84, 0.2); background: #121212;
+        }
+        .spotify-iframe { width: 100%; height: 152px; border: none; border-radius: 14px; }
+
+        /* History */
+        .history-wrapper { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+        body.incognito-mode .history-wrapper { opacity: 0.4; pointer-events: none; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-dim); font-weight: 600; }
+        .clear-btn { background: none; border: none; color: #f87171; cursor: pointer; font-size: 0.8rem; }
+        .history-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip { background: var(--surface-card); color: var(--text-muted); border: 1px solid var(--surface-border); padding: 7px 14px; border-radius: 14px; font-size: 0.85rem; cursor: pointer; }
+
+        /* Results Card */
+        .results-container { width: 100%; display: none; flex-direction: column; gap: 20px; }
+        .result-card {
+            background: var(--surface-card); backdrop-filter: blur(25px);
+            border: 1px solid var(--surface-border); border-radius: 24px;
+            overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .image-container { width: 100%; height: 340px; background: #0f172a; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        .result-image { width: 100%; height: 100%; object-fit: cover; }
+        .badge-bar { position: absolute; bottom: 14px; left: 14px; display: flex; gap: 8px; z-index: 5; }
+        .info-badge { background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; padding: 6px 14px; border-radius: 14px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .info-badge.spotify-badge { border-color: rgba(29, 185, 84, 0.6); color: #1db954; }
+
+        .result-body { padding: 28px; }
+        .result-actions-bar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 14px; }
+        .action-tool-btn {
+            background: rgba(30, 41, 59, 0.6); border: 1px solid var(--surface-border); color: var(--text-muted);
+            padding: 6px 12px; border-radius: 14px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+        }
+        .action-tool-btn:hover { color: #fff; border-color: var(--primary); }
+
+        .result-content { color: #cbd5e1; font-size: 1.02rem; line-height: 1.8; }
+        .result-content h3 { color: #38bdf8; margin: 16px 0 8px; font-size: 1.2rem; }
+        .result-content h4 { color: #c084fc; margin: 12px 0 6px; font-size: 1.05rem; }
+        .result-content strong { color: #ffffff; }
+        .result-content ul { margin-left: 20px; margin-bottom: 12px; }
+        .result-content li { margin-bottom: 6px; }
+
+        /* Fullscreen Web Viewer */
+        .published-site-viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; background: #000; display: none; }
+        .viewer-close-bar {
+            position: absolute; top: 12px; right: 16px; z-index: 10; background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--surface-border); color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+        }
+        .viewer-iframe { width: 100%; height: 100%; border: none; }
+
+        /* Shimmer Loading */
+        .loading-shimmer {
+            display: none; width: 100%; background: var(--surface-card); border-radius: 24px; padding: 28px; border: 1px solid var(--surface-border);
+        }
+        .shimmer-box {
+            height: 220px; background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%);
+            background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 16px; margin-bottom: 20px;
+        }
+        .shimmer-line {
+            height: 16px; background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%);
+            background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 8px; margin-bottom: 14px;
+        }
+
+        /* Ban Modal */
+        .ban-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(5, 7, 15, 0.96); backdrop-filter: blur(30px);
+            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; padding: 20px; text-align: center;
+        }
+        .ban-modal {
+            background: rgba(24, 15, 23, 0.85); border: 2px solid var(--danger); box-shadow: 0 0 50px var(--danger-glow);
+            border-radius: 28px; padding: 35px 25px; max-width: 480px; width: 100%; display: flex; flex-direction: column; align-items: center;
+        }
+        .quick-unban-btn {
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #f8fafc; padding: 12px 24px; border-radius: 20px; font-size: 0.95rem; cursor: pointer; font-weight: 600; margin-top: 15px;
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
-    <!-- Lightweight Preview Shell Loader -->
-    <div id="previewLoader">
-        <div class="spinner"></div>
-        <div>Loading FineAI Engine from Backend...</div>
+<!-- Startup Video Splash -->
+<div class="intro-splash-overlay" id="introSplashOverlay">
+    <video id="introVideo" class="intro-video-player" autoplay muted playsinline><source src="https://files.catbox.moe/vtdwyb.mp4" type="video/mp4"></video>
+</div>
+
+<!-- Incognito Transition Video with Audio -->
+<div class="incognito-video-overlay" id="incognitoVideoOverlay" style="display:none; opacity:0; visibility:hidden;">
+    <video id="incognitoVideo" class="intro-video-player" playsinline><source src="https://files.catbox.moe/bzh1kc.mp4" type="video/mp4"></video>
+</div>
+
+<!-- Published Site Fullscreen Viewer -->
+<div class="published-site-viewer" id="publishedSiteViewer">
+    <button class="viewer-close-bar" onclick="closeSiteViewer()">✕ Back to FineAI</button>
+    <iframe id="siteIframe" class="viewer-iframe"></iframe>
+</div>
+
+<div class="ambient-glow-1"></div>
+
+<!-- Welcome Overlay -->
+<div class="welcome-overlay" id="welcomeOverlay">
+    <div class="welcome-card">
+        <div class="robot-img-wrapper">
+            <img src="https://files.catbox.moe/7y76th.png" alt="FineAI Robot" class="robot-img" />
+        </div>
+        <h2>Fineout Engine</h2>
+        <p>Hello! I am FineAI. Ready to discover next-generation visual answers, music & websites?</p>
+        <div class="welcome-btn-group">
+            <button class="btn-start-search" onclick="startSearch()">🚀 Start Search</button>
+            <button class="btn-close-welcome" onclick="closeWelcome()">✕ Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Top Navigation -->
+<div class="top-navbar">
+    <div>
+        <button id="googleSignInBtn" class="auth-btn" onclick="signInWithGoogle()"><span>🌐</span> <span>Sign In</span></button>
+        <div id="userProfileBadge" class="user-profile-badge">
+            <img id="userAvatar" class="user-avatar" src="" alt="User" />
+            <span id="userName" class="user-name">User</span>
+            <button class="signout-btn" onclick="signOutUser()">✕</button>
+        </div>
+    </div>
+    <div>
+        <button class="incognito-btn" id="incognitoToggleBtn" onclick="toggleIncognito()"><span>🕶️</span> <span id="incognitoText">Incognito</span></button>
+    </div>
+</div>
+
+<!-- Mode Switcher -->
+<div class="mode-switch-wrapper">
+    <div class="mode-pill active" id="searchModePill" onclick="switchMode('search')">⚡ AI Search</div>
+    <div class="mode-pill" id="musicModePill" onclick="switchMode('music')">🎵 Spotify Music</div>
+    <div class="mode-pill" id="studioModePill" onclick="switchMode('studio')">🌐 Web Studio (Fine.name.out)</div>
+</div>
+
+<!-- Main Container -->
+<div class="container">
+    <div class="brand">
+        <img id="brandLogo" src="https://files.catbox.moe/7y76th.png" alt="FineAI Logo" class="brand-logo-img" />
+        <div class="incognito-status-badge">🕶️ Incognito • Private Mode Active</div>
     </div>
 
-    <!-- Backend Dynamic Render Container -->
-    <iframe id="appContainer" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    <!-- Search Area -->
+    <div class="search-area-wrapper" id="searchArea">
+        <div class="search-box">
+            <input type="text" id="queryInput" class="search-input" placeholder="Ask or search anything in any language..." onkeydown="if(event.key === 'Enter') handleSearch()" />
+            <button class="mic-btn" id="micBtn" onclick="toggleVoiceRecognition()" title="Voice Search">🎙️</button>
+            <button class="search-btn" id="mainSearchBtn" onclick="handleSearch()">Search ➔</button>
+        </div>
+    </div>
 
-    <script>
-        // Fetch the Complete App directly from Netlify Backend
-        async function loadBackendApp() {
-            try {
-                const response = await fetch('/.netlify/functions/search?render=full_app');
-                const html = await response.text();
-                const iframe = document.getElementById('appContainer');
-                iframe.srcdoc = html;
-                
-                iframe.onload = () => {
-                    const loader = document.getElementById('previewLoader');
-                    loader.style.opacity = '0';
-                    setTimeout(() => loader.style.display = 'none', 500);
-                };
-            } catch (err) {
-                document.getElementById('previewLoader').innerHTML = 
-                    `<span style="color:#ef4444;">⚠️ Backend Connection Failed: ${err.message}</span>`;
+    <!-- Interactive Category Chips -->
+    <div class="category-chips" id="catChips">
+        <div class="cat-chip" onclick="quickSearch('Where is Sigiriya located?')">📍 Sigiriya Location</div>
+        <div class="cat-chip" onclick="quickSearch('Tell me about Colombo city')">🏙️ Colombo City</div>
+        <div class="cat-chip" onclick="quickSearch('Shape of You Ed Sheeran')">🎵 Ed Sheeran</div>
+        <div class="cat-chip" onclick="quickSearch('James Webb Space Telescope')">🔭 Astronomy</div>
+        <div class="cat-chip" onclick="quickSearch('Quantum Computing Explained')">⚛️ Quantum</div>
+    </div>
+
+    <!-- Web Studio Panel -->
+    <div class="web-studio-panel" id="webStudioPanel">
+        <div class="studio-header">
+            <h3>🌐 AI Web Studio & Share Link</h3>
+            <p>Generate full websites & publish with your custom slug (Fine.name.out)</p>
+        </div>
+        <div class="domain-input-group">
+            <span class="domain-prefix">Fine.</span>
+            <input type="text" id="siteSlugInput" class="domain-slug-input" placeholder="yourname" />
+            <span class="domain-suffix">.out</span>
+        </div>
+        <textarea id="sitePromptInput" class="studio-prompt-input" placeholder="Describe the website you want (e.g., 'Modern Portfolio for a Musician with Spotify player & gallery')..."></textarea>
+        <button class="btn-generate-web" onclick="generateAndPublishWeb()">🚀 Create & Publish Website</button>
+    </div>
+
+    <!-- History -->
+    <div class="history-wrapper" id="historyWrapper">
+        <div class="history-header">
+            <span id="historyHeaderTitle">🕒 Recent Searches</span>
+            <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+        </div>
+        <div class="history-chips" id="historyChips"></div>
+    </div>
+
+    <div class="loading-shimmer" id="loadingState">
+        <div class="shimmer-box"></div>
+        <div class="shimmer-line"></div>
+    </div>
+
+    <!-- Results View -->
+    <div class="results-container" id="resultsContainer">
+        <div class="result-card">
+            <div class="image-container">
+                <img id="resultImage" class="result-image" alt="Visual Preview" />
+                <div class="badge-bar">
+                    <div id="badgeTag" class="info-badge">⚡ FineAI Verified</div>
+                </div>
+            </div>
+            <div class="result-body" id="resultBody">
+                <div class="result-actions-bar">
+                    <button class="action-tool-btn" onclick="readAloudAnswer()">🔊 Listen Answer</button>
+                    <button class="action-tool-btn" onclick="copyAnswerText()">📋 Copy</button>
+                </div>
+
+                <!-- Spotify Embed Player -->
+                <div id="spotifyPlayerContainer" class="spotify-embed-container" style="display: none;">
+                    <iframe id="spotifyIframe" class="spotify-iframe" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                </div>
+                <div class="result-content" id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ban Modal -->
+<div class="ban-overlay" id="banOverlay">
+    <div class="ban-modal">
+        <div style="font-size: 3.5rem; margin-bottom: 12px;">⚠️🔒</div>
+        <h2 style="color:#ef4444; margin-bottom: 8px;">Content Warning</h2>
+        <p style="color:#cbd5e1; font-size:0.95rem; margin-bottom: 20px;">
+            Restricted / NSFW content detected. Access temporarily locked.
+        </p>
+        <button class="quick-unban-btn" onclick="unbanUser()">⚡ Instant Unlock</button>
+    </div>
+</div>
+
+<script>
+    const BACKEND_API_URL = "/.netlify/functions/search";
+    const INSULT_GIF = "https://files.catbox.moe/t72mfp.gif";
+    const NORMAL_LOGO = "https://files.catbox.moe/7y76th.png";
+    const INCOGNITO_LOGO = "https://files.catbox.moe/hi9lwi.jpg";
+
+    let rtdb = null, auth = null, currentUser = null;
+    let isIncognito = false, currentMode = "search";
+    let currentAppVersion = "2.1.0";
+    let isVoiceListening = false;
+
+    // ================= FIREBASE INITIALIZATION =================
+    async function initFirebaseFromBackend() {
+        try {
+            const res = await fetch(BACKEND_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "get_config" })
+            });
+            const config = await res.json();
+            firebase.initializeApp(config);
+            auth = firebase.auth();
+            rtdb = firebase.database();
+
+            auth.onAuthStateChanged(user => {
+                currentUser = user;
+                if (user) {
+                    document.getElementById('googleSignInBtn').style.display = 'none';
+                    document.getElementById('userProfileBadge').style.display = 'flex';
+                    document.getElementById('userAvatar').src = user.photoURL || NORMAL_LOGO;
+                    document.getElementById('userName').innerText = user.displayName ? user.displayName.split(" ")[0] : "User";
+                    document.getElementById('historyHeaderTitle').innerText = "☁️ Cloud Synced Searches";
+                } else {
+                    document.getElementById('googleSignInBtn').style.display = 'flex';
+                    document.getElementById('userProfileBadge').style.display = 'none';
+                    document.getElementById('historyHeaderTitle').innerText = "🕒 Recent Searches";
+                }
+                loadHistory();
+            });
+
+            checkSharedSiteUrl();
+        } catch (e) {
+            console.error("Firebase init error:", e);
+        }
+    }
+
+    function signInWithGoogle() {
+        if (!auth) return;
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(e => alert("Sign-In error: " + e.message));
+    }
+
+    function signOutUser() {
+        if (auth) auth.signOut().then(loadHistory);
+    }
+
+    // ================= 🔄 LIVE AUTO-UPDATE WATCHER =================
+    async function checkLiveUpdates() {
+        try {
+            const res = await fetch(BACKEND_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "get_version" })
+            });
+            const data = await res.json();
+            if (data.version && data.version !== currentAppVersion) {
+                const toast = document.createElement('div');
+                toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0284c7,#8b5cf6);color:#fff;padding:10px 22px;border-radius:30px;font-size:0.85rem;font-weight:700;z-index:9999999;";
+                toast.innerHTML = "✨ New Update Live! Updating...";
+                document.body.appendChild(toast);
+                setTimeout(() => window.location.reload(true), 1200);
+            }
+        } catch (e) {}
+    }
+    setInterval(checkLiveUpdates, 20000);
+
+    // ================= 🎙️ VOICE SEARCH (SPEECH-TO-TEXT) =================
+    function toggleVoiceRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Voice search is not supported on this browser. Please use Chrome!");
+            return;
+        }
+
+        const micBtn = document.getElementById('micBtn');
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+
+        if (!isVoiceListening) {
+            isVoiceListening = true;
+            micBtn.classList.add('listening');
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('queryInput').value = transcript;
+                handleSearch();
+            };
+
+            recognition.onerror = () => {
+                isVoiceListening = false;
+                micBtn.classList.remove('listening');
+            };
+
+            recognition.onend = () => {
+                isVoiceListening = false;
+                micBtn.classList.remove('listening');
+            };
+        }
+    }
+
+    // ================= 🔊 TEXT-TO-SPEECH (READ ALOUD) =================
+    function readAloudAnswer() {
+        const text = document.getElementById('resultContent').innerText;
+        if (!text) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function copyAnswerText() {
+        const text = document.getElementById('resultContent').innerText;
+        if (text) {
+            navigator.clipboard.writeText(text);
+            alert("📋 Answer copied to clipboard!");
+        }
+    }
+
+    // ================= MODE SWITCHING =================
+    function switchMode(mode) {
+        currentMode = mode;
+        const searchArea = document.getElementById('searchArea');
+        const studioPanel = document.getElementById('webStudioPanel');
+        const qInput = document.getElementById('queryInput');
+        const sBtn = document.getElementById('mainSearchBtn');
+
+        document.getElementById('searchModePill').className = 'mode-pill' + (mode === 'search' ? ' active' : '');
+        document.getElementById('musicModePill').className = 'mode-pill' + (mode === 'music' ? ' music-active' : '');
+        document.getElementById('studioModePill').className = 'mode-pill' + (mode === 'studio' ? ' active' : '');
+
+        if (mode === 'studio') {
+            searchArea.style.display = 'none';
+            studioPanel.style.display = 'flex';
+        } else {
+            searchArea.style.display = 'block';
+            studioPanel.style.display = 'none';
+            if (mode === 'music') {
+                qInput.placeholder = "🎵 Search any song, artist, album, or playlist on Spotify...";
+                sBtn.innerText = "Play 🎧";
+            } else {
+                qInput.placeholder = "Ask or search anything in any language...";
+                sBtn.innerText = "Search ➔";
             }
         }
-        document.addEventListener('DOMContentLoaded', loadBackendApp);
-    </script>
+    }
+
+    // ================= AI WEB GENERATOR & PUBLISHER =================
+    async function generateAndPublishWeb() {
+        const rawSlug = document.getElementById('siteSlugInput').value.trim().toLowerCase();
+        const prompt = document.getElementById('sitePromptInput').value.trim();
+
+        if (!rawSlug || !prompt) {
+            alert("Please enter a custom slug and describe the website!");
+            return;
+        }
+
+        const formattedDomain = `fine.${rawSlug.replace(/[^a-z0-9]/g, '')}.out`;
+        document.getElementById('loadingState').style.display = 'block';
+
+        try {
+            const res = await fetch(BACKEND_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "generate_site", prompt })
+            });
+
+            const data = await res.json();
+            if (!data.html) throw new Error(data.error || "Could not generate HTML");
+
+            if (rtdb) {
+                const siteRef = rtdb.ref(`published_sites/${formattedDomain.replace(/\./g, '_')}`);
+                await siteRef.set({
+                    domain: formattedDomain,
+                    html: data.html,
+                    created_at: Date.now(),
+                    creator: currentUser ? currentUser.email : "Anonymous"
+                });
+            }
+
+            const shareLink = `${window.location.origin}/?site=${formattedDomain}`;
+            navigator.clipboard.writeText(shareLink);
+            alert(`🎉 Website Published!\n\n🌐 Slug: ${formattedDomain}\n🔗 Link: ${shareLink}\n(Copied to clipboard!)`);
+            openSiteViewerWithHtml(data.html);
+
+        } catch (e) {
+            alert("Error: " + e.message);
+        } finally {
+            document.getElementById('loadingState').style.display = 'none';
+        }
+    }
+
+    function checkSharedSiteUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const siteDomain = urlParams.get('site');
+        if (siteDomain && rtdb) {
+            const cleanKey = siteDomain.replace(/\./g, '_');
+            rtdb.ref(`published_sites/${cleanKey}`).once('value', snapshot => {
+                const siteData = snapshot.val();
+                if (siteData && siteData.html) {
+                    openSiteViewerWithHtml(siteData.html);
+                }
+            });
+        }
+    }
+
+    function openSiteViewerWithHtml(html) {
+        document.getElementById('publishedSiteViewer').style.display = 'block';
+        document.getElementById('siteIframe').srcdoc = html;
+    }
+
+    function closeSiteViewer() {
+        document.getElementById('publishedSiteViewer').style.display = 'none';
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // ================= VIDEO & START =================
+    const introVideo = document.getElementById('introVideo');
+    introVideo.addEventListener('ended', dismissIntro);
+    introVideo.addEventListener('error', () => setTimeout(dismissIntro, 500));
+
+    function dismissIntro() {
+        document.getElementById('introSplashOverlay').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('introSplashOverlay').style.display = 'none';
+            if (localStorage.getItem('fineout_banned') !== 'true') {
+                document.getElementById('welcomeOverlay').style.display = 'flex';
+            }
+        }, 700);
+    }
+
+    function startSearch() {
+        document.getElementById('welcomeOverlay').style.display = 'none';
+        document.getElementById('queryInput').focus();
+    }
+
+    function closeWelcome() {
+        document.getElementById('welcomeOverlay').style.display = 'none';
+    }
+
+    function toggleIncognito() {
+        isIncognito = !isIncognito;
+        const incOverlay = document.getElementById('incognitoVideoOverlay');
+        const incVideo = document.getElementById('incognitoVideo');
+        if (isIncognito) {
+            incOverlay.style.display = 'flex';
+            incOverlay.style.opacity = '1';
+            incOverlay.style.visibility = 'visible';
+            incVideo.currentTime = 0;
+            incVideo.muted = false;
+            incVideo.play().catch(()=>{});
+            incVideo.onended = () => {
+                incOverlay.style.opacity = '0';
+                setTimeout(() => { incOverlay.style.display = 'none'; }, 600);
+            };
+            document.body.classList.add('incognito-mode');
+            document.getElementById('brandLogo').src = INCOGNITO_LOGO;
+            document.getElementById('incognitoText').innerText = "Exit";
+        } else {
+            document.body.classList.remove('incognito-mode');
+            document.getElementById('brandLogo').src = NORMAL_LOGO;
+            document.getElementById('incognitoText').innerText = "Incognito";
+        }
+    }
+
+    // ================= AI INSULT & NSFW FILTERS =================
+    const insultPatterns = [
+        /\b(stupid|idiot|fool|useless|shut up|fuck you|bastard|dumb|hate you|trash|nonsense)\b/i,
+        /(මෝඩ|පිස්සු|බල්ලා|හරකා|ගොනා|වැඩක් නෑ|කැත|නොදකින්|පලයන්|හුත්තෝ|පකයෝ|කාලකන්නි|බූරුවා)/i
+    ];
+
+    const forbiddenPatterns = [
+        /\b(sex|porn|xxx|nude|boobs|dick|pussy|vagina|penis|erotic|hentai|nsfw|adult)\b/i,
+        /(හුක|හුත්ත|පයිය|කුක්කු|ජල්තර|වල්|හිකිල්ල|පක)/i
+    ];
+
+    function isInsult(text) { return insultPatterns.some(p => p.test(text)); }
+    function isForbidden(text) { return forbiddenPatterns.some(p => p.test(text)); }
+
+    function triggerBanScreen() {
+        localStorage.setItem('fineout_banned', 'true');
+        document.getElementById('welcomeOverlay').style.display = 'none';
+        document.getElementById('banOverlay').style.display = 'flex';
+    }
+
+    function unbanUser() {
+        localStorage.removeItem('fineout_banned');
+        document.getElementById('banOverlay').style.display = 'none';
+        alert("🎉 Access Restored!");
+        location.reload();
+    }
+
+    // ================= SEARCH & SPOTIFY PLAYER ENGINE =================
+    async function handleSearch() {
+        const query = document.getElementById('queryInput').value.trim();
+        if (!query) return;
+
+        if (isForbidden(query)) {
+            triggerBanScreen();
+            return;
+        }
+
+        saveHistory(query);
+        document.getElementById('resultsContainer').style.display = 'none';
+        document.getElementById('loadingState').style.display = 'block';
+
+        const spotifyContainer = document.getElementById('spotifyPlayerContainer');
+        const spotifyIframe = document.getElementById('spotifyIframe');
+        const resultImage = document.getElementById('resultImage');
+        const resultBody = document.getElementById('resultBody');
+        spotifyContainer.style.display = 'none';
+
+        if (isInsult(query)) {
+            setTimeout(() => {
+                document.getElementById('loadingState').style.display = 'none';
+                resultImage.src = INSULT_GIF;
+                document.getElementById('badgeTag').innerText = "🛑 FineAI Response";
+                resultBody.style.display = 'none';
+                document.getElementById('resultsContainer').style.display = 'flex';
+            }, 500);
+            return;
+        }
+
+        resultBody.style.display = 'block';
+
+        try {
+            const res = await fetch(BACKEND_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Search Request Failed");
+            }
+
+            // Check if Music query -> Load Spotify Embed Player
+            if (data.is_music === true || currentMode === 'music' || data.spotify_search) {
+                const searchTrack = encodeURIComponent(data.spotify_search || query);
+                spotifyIframe.src = `https://open.spotify.com/embed/search/${searchTrack}?utm_source=generator&theme=0`;
+                spotifyContainer.style.display = 'block';
+            }
+
+            // High Precision Image Engine (Wikipedia Live + AI Fallback)
+            let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(data.visual_prompt || query)}?width=900&height=450&nologo=true`;
+            try {
+                const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(data.wiki_title || query)}&prop=pageimages&format=json&pithumbsize=1000&origin=*`);
+                const wikiJson = await wikiRes.json();
+                const pages = wikiJson.query?.pages;
+                if (pages) {
+                    const pId = Object.keys(pages)[0];
+                    if (pages[pId]?.thumbnail?.source) imgUrl = pages[pId].thumbnail.source;
+                }
+            } catch (err) {}
+
+            resultImage.src = imgUrl;
+            
+            const badge = document.getElementById('badgeTag');
+            if (data.is_music) {
+                badge.className = 'info-badge spotify-badge';
+                badge.innerText = '🎵 Spotify Music Stream';
+            } else {
+                badge.className = 'info-badge';
+                badge.innerText = data.badge_text || "⚡ FineAI Verified";
+            }
+
+            document.getElementById('resultContent').innerHTML = formatMarkdown(data.answer);
+            document.getElementById('resultsContainer').style.display = 'flex';
+        } catch (e) {
+            document.getElementById('resultContent').innerHTML = `<span style="color:#ef4444; font-weight: 600;">⚠️ ${e.message}</span>`;
+            document.getElementById('resultsContainer').style.display = 'flex';
+        } finally {
+            document.getElementById('loadingState').style.display = 'none';
+        }
+    }
+
+    function quickSearch(text) {
+        document.getElementById('queryInput').value = text;
+        handleSearch();
+    }
+
+    function formatMarkdown(text) {
+        if (!text) return "";
+        return text
+            .replace(/^### (.*$)/gim, '<h4>$1</h4>')
+            .replace(/^## (.*$)/gim, '<h3>$1</h3>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/^\* (.*$)/gim, '<li>$1</li>')
+            .replace(/^- (.*$)/gim, '<li>$1</li>')
+            .replace(/(<li>[\s\S]*?<\/li>)/gim, '<ul>$1</ul>')
+            .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+    }
+
+    // ================= HISTORY =================
+    function saveHistory(query) {
+        if (isIncognito) return;
+        if (currentUser && rtdb) {
+            rtdb.ref(`users/${currentUser.uid}/history`).push({ query: query, timestamp: Date.now() });
+        } else {
+            let hist = JSON.parse(localStorage.getItem('fine_hist') || "[]");
+            hist = hist.filter(x => x.toLowerCase() !== query.toLowerCase());
+            hist.unshift(query);
+            if (hist.length > 6) hist.pop();
+            localStorage.setItem('fine_hist', JSON.stringify(hist));
+            renderHistoryChips(hist);
+        }
+    }
+
+    function loadHistory() {
+        if (currentUser && rtdb) {
+            rtdb.ref(`users/${currentUser.uid}/history`).limitToLast(6).on('value', snap => {
+                const val = snap.val();
+                let items = val ? Object.values(val).map(x => x.query).reverse() : [];
+                renderHistoryChips([...new Set(items)]);
+            });
+        } else {
+            renderHistoryChips(JSON.parse(localStorage.getItem('fine_hist') || "[]"));
+        }
+    }
+
+    function renderHistoryChips(items) {
+        const wrap = document.getElementById('historyChips');
+        wrap.innerHTML = items && items.length ? "" : `<span style="color:var(--text-dim);font-size:0.8rem;">No searches yet</span>`;
+        (items || []).forEach(item => {
+            const chip = document.createElement('div');
+            chip.className = 'chip'; chip.innerText = `🔍 ${item}`;
+            chip.onclick = () => { document.getElementById('queryInput').value = item; handleSearch(); };
+            wrap.appendChild(chip);
+        });
+    }
+
+    function clearHistory() {
+        if (currentUser && rtdb) rtdb.ref(`users/${currentUser.uid}/history`).remove();
+        else localStorage.removeItem('fine_hist');
+        renderHistoryChips([]);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initFirebaseFromBackend();
+        if (localStorage.getItem('fineout_banned') === 'true') {
+            triggerBanScreen();
+        }
+    });
+</script>
+
 </body>
 </html>
