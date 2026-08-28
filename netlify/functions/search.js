@@ -1,16 +1,17 @@
-// ================= 🛡️ BACKEND SERVER & APP ENGINE =================
-const IP_COOLDOWN_MS = 3500;             
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; 
-const MAX_REQUESTS_PER_WINDOW = 30;       
-const MAX_INPUT_CHARS = 300;             
-const MAX_OUTPUT_TOKENS = 750;           
+// ================= 🛡️ MASTER BACKEND SERVER & APP ENGINE =================
+const IP_COOLDOWN_MS = 3500;             // තත්පර 3.5 ක Cooldown එක
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // විනාඩි 15 ක Time Window එක
+const MAX_REQUESTS_PER_WINDOW = 30;       // උපරිම Searches ගණන
+const MAX_INPUT_CHARS = 300;             // උපරිම Input අකුරු ගණන
+const MAX_OUTPUT_TOKENS = 750;           // උපරිම Output Tokens ප්‍රමාණය
+const APP_VERSION = "2.1.0";             // Auto-Update Version අංකය
 
 const ipTracker = new Map();
 
 exports.handler = async function(event, context) {
     const API_KEY = process.env.GEMINI_API_KEY;
 
-    // 1. GET REQUEST: SERVE COMPLETE APP UI TO PREVIEW PANEL
+    // ================= 1. GET REQUEST (SERVE SSR FULL APP UI) =================
     if (event.httpMethod === "GET") {
         return {
             statusCode: 200,
@@ -19,13 +20,22 @@ exports.handler = async function(event, context) {
         };
     }
 
-    // 2. POST REQUESTS (API, AI SEARCH & WEB STUDIO)
+    // ================= 2. POST REQUESTS (API & AI LOGIC) =================
     if (event.httpMethod === "POST") {
         try {
             const body = JSON.parse(event.body || "{}");
             const action = body.action || "search";
 
-            // Firebase Config Provider
+            // A. Auto-Update Version Checker
+            if (action === "get_version") {
+                return {
+                    statusCode: 200,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ version: APP_VERSION })
+                };
+            }
+
+            // B. Firebase Config Provider
             if (action === "get_config") {
                 return {
                     statusCode: 200,
@@ -42,8 +52,12 @@ exports.handler = async function(event, context) {
                 };
             }
 
-            // Cooldown & Rate Limiter
-            const clientIp = event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'] || event.headers['x-forwarded-for'] || 'unknown_ip';
+            // C. Server-Side IP Rate Limiting & Cooldown System
+            const clientIp = event.headers['x-nf-client-connection-ip'] || 
+                             event.headers['client-ip'] || 
+                             event.headers['x-forwarded-for'] || 
+                             'unknown_ip';
+
             const now = Date.now();
             let userRecord = ipTracker.get(clientIp);
 
@@ -52,6 +66,7 @@ exports.handler = async function(event, context) {
                 ipTracker.set(clientIp, userRecord);
             }
 
+            // Cooldown Check
             if (userRecord.lastRequestTime && (now - userRecord.lastRequestTime) < IP_COOLDOWN_MS) {
                 const waitSec = Math.ceil((IP_COOLDOWN_MS - (now - userRecord.lastRequestTime)) / 1000);
                 return {
@@ -61,11 +76,13 @@ exports.handler = async function(event, context) {
                 };
             }
 
+            // Rate Limit Window Reset
             if (now - userRecord.windowStart > RATE_LIMIT_WINDOW_MS) {
                 userRecord.count = 0;
                 userRecord.windowStart = now;
             }
 
+            // Limit Reached Check
             if (userRecord.count >= MAX_REQUESTS_PER_WINDOW) {
                 return {
                     statusCode: 429,
@@ -77,6 +94,13 @@ exports.handler = async function(event, context) {
             userRecord.count += 1;
             userRecord.lastRequestTime = now;
 
+            // Memory Cleanup
+            if (ipTracker.size > 1000) {
+                for (let [ip, data] of ipTracker) {
+                    if (now - data.windowStart > RATE_LIMIT_WINDOW_MS) ipTracker.delete(ip);
+                }
+            }
+
             if (!API_KEY) {
                 return {
                     statusCode: 500,
@@ -85,10 +109,10 @@ exports.handler = async function(event, context) {
                 };
             }
 
-            // AI Web Generator
+            // D. AI Web Studio Generator
             if (action === "generate_site") {
                 const promptText = (body.prompt || "").slice(0, MAX_INPUT_CHARS);
-                const sitePrompt = `You are FineAI Web Engine. Create a complete, stylish, modern single-page HTML website for: "${promptText}". Return ONLY the raw HTML code inside <!DOCTYPE html><html>...</html>.`;
+                const sitePrompt = `You are FineAI Web Engine. Create a complete, modern, responsive single-page HTML website for: "${promptText}". Return ONLY the pure HTML code inside <!DOCTYPE html><html>...</html>.`;
 
                 const siteUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
                 let res = await fetch(siteUrl, {
@@ -122,11 +146,11 @@ exports.handler = async function(event, context) {
                 };
             }
 
-            // AI Search Engine Logic
+            // E. AI Search Engine Logic with Spotify Intelligence
             const rawQuery = (body.query || "").slice(0, MAX_INPUT_CHARS);
             const searchUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`;
 
-            const systemPrompt = `You are FineAI Search Engine with Spotify Intelligence.
+            const systemPrompt = `You are FineAI, the next-generation search engine with built-in Spotify Music Intelligence.
 User Query: "${rawQuery}".
 
 Respond ONLY with raw valid JSON in this exact structure:
@@ -182,7 +206,7 @@ Respond ONLY with raw valid JSON in this exact structure:
     }
 };
 
-// ================= 3. EMBEDDED COMPLETE APPLICATION UI (HTML/CSS/JS) =================
+// ================= 3. COMPLETE EMBEDDED FRONTEND APPLICATION =================
 const FULL_APP_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -198,14 +222,15 @@ const FULL_APP_HTML = `<!DOCTYPE html>
     <style>
         :root {
             --bg-base: #060913; --surface-card: rgba(18, 24, 39, 0.75); --surface-border: rgba(255, 255, 255, 0.08);
-            --primary: #38bdf8; --spotify-green: #1db954; --accent-purple: #c084fc; --danger: #ef4444;
-            --text-main: #f8fafc; --text-muted: #94a3b8; --text-dim: #64748b;
+            --primary: #38bdf8; --primary-glow: rgba(56, 189, 248, 0.25); --spotify-green: #1db954;
+            --accent-purple: #c084fc; --danger: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8; --text-dim: #64748b;
         }
         body.incognito-mode { --bg-base: #050508; --surface-card: rgba(20, 15, 28, 0.85); --primary: #c084fc; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', system-ui, sans-serif; }
         body {
             background-color: var(--bg-base); color: var(--text-main); min-height: 100vh;
             display: flex; flex-direction: column; align-items: center; padding: 20px 16px 80px; position: relative; overflow-x: hidden;
+            transition: background-color 0.4s ease;
         }
         .intro-splash-overlay, .incognito-video-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 999999;
@@ -228,6 +253,7 @@ const FULL_APP_HTML = `<!DOCTYPE html>
         .user-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8; }
         .user-name { font-size: 0.8rem; font-weight: 600; color: #f8fafc; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .signout-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.8rem; }
+        .signout-btn:hover { color: #ef4444; }
         .mode-switch-wrapper { display: flex; gap: 8px; margin-bottom: 16px; z-index: 5; flex-wrap: wrap; justify-content: center; }
         .mode-pill {
             padding: 7px 16px; border-radius: 20px; background: rgba(30, 41, 59, 0.5); border: 1px solid var(--surface-border);
@@ -268,7 +294,7 @@ const FULL_APP_HTML = `<!DOCTYPE html>
         .result-body { padding: 25px; }
         .result-content { color: #e2e8f0; font-size: 1rem; line-height: 1.8; }
         .published-site-viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; background: #000; display: none; }
-        .viewer-close-bar { position: absolute; top: 12px; right: 16px; z-index: 10; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--surface-border); color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer; }
+        .viewer-close-bar { position: absolute; top: 12px; right: 16px; z-index: 10; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--surface-border); color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.8rem; }
         .viewer-iframe { width: 100%; height: 100%; border: none; }
         .loading-shimmer { display: none; width: 100%; background: var(--surface-card); border-radius: 24px; padding: 24px; border: 1px solid var(--surface-border); }
         .shimmer-box { height: 200px; background: linear-gradient(90deg, #131d31 25%, #1e2e4f 50%, #131d31 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 16px; margin-bottom: 16px; }
@@ -337,6 +363,7 @@ const FULL_APP_HTML = `<!DOCTYPE html>
 <script>
     const BACKEND_API_URL = "/.netlify/functions/search";
     let rtdb = null, auth = null, currentUser = null, isIncognito = false, currentMode = "search";
+    let currentAppVersion = "2.1.0";
 
     async function initFirebaseFromBackend() {
         try {
@@ -366,6 +393,22 @@ const FULL_APP_HTML = `<!DOCTYPE html>
 
     function signInWithGoogle() { if (auth) auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
     function signOutUser() { if (auth) auth.signOut().then(loadHistory); }
+
+    // Auto-Update Watcher
+    async function checkLiveUpdates() {
+        try {
+            const res = await fetch(BACKEND_API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get_version" }) });
+            const data = await res.json();
+            if (data.version && data.version !== currentAppVersion) {
+                const toast = document.createElement('div');
+                toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#0284c7;color:#fff;padding:10px 20px;border-radius:20px;font-weight:700;z-index:9999999;";
+                toast.innerHTML = "✨ New Update Live! Updating...";
+                document.body.appendChild(toast);
+                setTimeout(() => window.location.reload(true), 1500);
+            }
+        } catch (e) {}
+    }
+    setInterval(checkLiveUpdates, 20000);
 
     function switchMode(mode) {
         currentMode = mode;
