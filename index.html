@@ -24,7 +24,6 @@
             --spotify-green: #1db954;
             --accent-purple: #c084fc;
             --danger: #ef4444;
-            --danger-glow: rgba(239, 68, 68, 0.4);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
@@ -68,18 +67,11 @@
             margin-bottom: 15px; z-index: 10;
         }
 
-        .top-nav-left, .top-nav-right { display: flex; align-items: center; gap: 8px; }
-
-        .auth-btn, .incognito-btn, .token-pill {
+        .auth-btn, .incognito-btn {
             background: rgba(30, 41, 59, 0.7); border: 1.5px solid var(--surface-border);
             color: var(--text-main); padding: 7px 14px; border-radius: 20px;
             font-size: 0.82rem; font-weight: 600; cursor: pointer;
             display: flex; align-items: center; gap: 6px; backdrop-filter: blur(10px);
-        }
-
-        .token-pill {
-            border-color: rgba(56, 189, 248, 0.4);
-            color: #38bdf8; font-weight: 700; cursor: default;
         }
 
         .user-profile-badge {
@@ -217,17 +209,15 @@
 
 <!-- Top Nav -->
 <div class="top-navbar">
-    <div class="top-nav-left">
+    <div>
         <button id="googleSignInBtn" class="auth-btn" onclick="signInWithGoogle()"><span>🌐</span> <span>Sign In</span></button>
         <div id="userProfileBadge" class="user-profile-badge">
             <img id="userAvatar" class="user-avatar" src="" alt="User" />
             <span id="userName" class="user-name">User</span>
             <button class="signout-btn" onclick="signOutUser()">✕</button>
         </div>
-        <!-- Token Display Badge -->
-        <div class="token-pill" id="tokenDisplayBadge">⚡ Unlimited Access</div>
     </div>
-    <div class="top-nav-right">
+    <div>
         <button class="incognito-btn" id="incognitoToggleBtn" onclick="toggleIncognito()"><span>🕶️</span> <span id="incognitoText">Incognito</span></button>
     </div>
 </div>
@@ -282,7 +272,7 @@
         <div class="shimmer-line"></div>
     </div>
 
-    <!-- Search Results View -->
+    <!-- Search / Music Results View -->
     <div class="results-container" id="resultsContainer">
         <div class="result-card">
             <div class="image-container">
@@ -400,7 +390,7 @@
             });
 
             const data = await res.json();
-            if (!data.html) throw new Error("Could not generate HTML");
+            if (!data.html) throw new Error(data.error || "Could not generate HTML");
 
             if (rtdb) {
                 const siteRef = rtdb.ref(`published_sites/${formattedDomain.replace(/\./g, '_')}`);
@@ -488,7 +478,6 @@
         if (!query) return;
 
         saveHistory(query);
-
         document.getElementById('resultsContainer').style.display = 'none';
         document.getElementById('loadingState').style.display = 'block';
 
@@ -504,12 +493,18 @@
             });
             const data = await res.json();
 
+            if (!res.ok) {
+                throw new Error(data.error || "Search Request Failed");
+            }
+
+            // Check if Music query -> Load Spotify Embed Player
             if (data.is_music === true || currentMode === 'music' || data.spotify_search) {
                 const searchTrack = encodeURIComponent(data.spotify_search || query);
                 spotifyIframe.src = `https://open.spotify.com/embed/search/${searchTrack}?utm_source=generator&theme=0`;
                 spotifyContainer.style.display = 'block';
             }
 
+            // Image Engine
             let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(data.visual_prompt || query)}?width=900&height=450&nologo=true`;
             try {
                 const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(data.wiki_title || query)}&prop=pageimages&format=json&pithumbsize=1000&origin=*`);
@@ -535,7 +530,7 @@
             document.getElementById('resultContent').innerHTML = formatMarkdown(data.answer);
             document.getElementById('resultsContainer').style.display = 'flex';
         } catch (e) {
-            document.getElementById('resultContent').innerHTML = `<span style="color:#ef4444;">⚠️ Error: ${e.message}</span>`;
+            document.getElementById('resultContent').innerHTML = `<span style="color:#ef4444; font-weight: 600;">⚠️ ${e.message}</span>`;
             document.getElementById('resultsContainer').style.display = 'flex';
         } finally {
             document.getElementById('loadingState').style.display = 'none';
